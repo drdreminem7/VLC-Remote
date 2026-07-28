@@ -13,7 +13,6 @@ import json
 import math
 import os
 import re
-import socket
 import sys
 import tempfile
 from collections.abc import Callable
@@ -94,8 +93,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--subtitle-track-id",
         help=(
-            "known VLC subtitle stream number to re-select during integration "
-            "testing"
+            "known VLC subtitle stream number to re-select during integration testing"
         ),
     )
     parser.add_argument(
@@ -126,8 +124,7 @@ def validate_base_url(value: str) -> str:
         raise ConfigurationError("VLC_HTTP_BASE_URL must include a hostname.")
     if parsed.username is not None or parsed.password is not None:
         raise ConfigurationError(
-            "VLC_HTTP_BASE_URL must not contain credentials; use "
-            "VLC_HTTP_PASSWORD."
+            "VLC_HTTP_BASE_URL must not contain credentials; use VLC_HTTP_PASSWORD."
         )
     if parsed.query or parsed.fragment:
         raise ConfigurationError(
@@ -140,13 +137,9 @@ def validate_base_url(value: str) -> str:
     try:
         port = parsed.port
     except ValueError as exc:
-        raise ConfigurationError(
-            "VLC_HTTP_BASE_URL contains an invalid port."
-        ) from exc
+        raise ConfigurationError("VLC_HTTP_BASE_URL contains an invalid port.") from exc
     if port is not None and not 1 <= port <= 65535:
-        raise ConfigurationError(
-            "VLC_HTTP_BASE_URL port must be between 1 and 65535."
-        )
+        raise ConfigurationError("VLC_HTTP_BASE_URL port must be between 1 and 65535.")
 
     host = parsed.hostname
     if ":" in host and not host.startswith("["):
@@ -161,9 +154,7 @@ def load_connection(timeout_seconds: float) -> VlcConnection:
     if not math.isfinite(timeout_seconds) or not 0.1 <= timeout_seconds <= 30:
         raise ConfigurationError("--timeout must be between 0.1 and 30 seconds.")
 
-    base_url = validate_base_url(
-        os.environ.get("VLC_HTTP_BASE_URL", DEFAULT_BASE_URL)
-    )
+    base_url = validate_base_url(os.environ.get("VLC_HTTP_BASE_URL", DEFAULT_BASE_URL))
     password = os.environ.get("VLC_HTTP_PASSWORD", "")
     if not password:
         raise ConfigurationError(
@@ -190,9 +181,7 @@ def request_status(
 ) -> JsonObject:
     """Request and decode VLC status, translating common failures."""
 
-    credentials = base64.b64encode(
-        f":{connection.password}".encode("utf-8")
-    ).decode("ascii")
+    credentials = base64.b64encode(f":{connection.password}".encode()).decode("ascii")
     request = Request(
         build_status_url(connection, params),
         headers={
@@ -215,7 +204,7 @@ def request_status(
         raise HttpFailure(
             f"VLC returned HTTP {exc.code} for the status endpoint."
         ) from None
-    except (URLError, TimeoutError, socket.timeout, ConnectionError) as exc:
+    except (URLError, TimeoutError, ConnectionError) as exc:
         reason = getattr(exc, "reason", exc)
         raise ConnectionFailure(
             "Could not connect to VLC's HTTP interface. Check that VLC is "
@@ -494,9 +483,7 @@ def run_integration_suite(
     if args.subtitle_track_id is not None:
         run("subtitle_track", "subtitle_track", args.subtitle_track_id)
     else:
-        print(
-            "SKIP subtitle_track: pass a known --subtitle-track-id to test selection"
-        )
+        print("SKIP subtitle_track: pass a known --subtitle-track-id to test selection")
 
     run("playlist_next", "pl_next")
     run("playlist_previous", "pl_previous")
@@ -540,8 +527,7 @@ def main(argv: list[str] | None = None) -> int:
         connection = load_connection(args.timeout)
         if args.confirm_test_media_loaded and not args.integration_test:
             raise ConfigurationError(
-                "--confirm-test-media-loaded has no effect without "
-                "--integration-test."
+                "--confirm-test-media-loaded has no effect without --integration-test."
             )
         if args.integration_test and not args.confirm_test_media_loaded:
             raise ConfigurationError(
@@ -573,11 +559,7 @@ def main(argv: list[str] | None = None) -> int:
 
         state = str(baseline.get("state", "unknown")).lower()
         duration = find_numeric(baseline, "length")
-        if (
-            state in {"stopped", "stop", "unknown"}
-            or duration is None
-            or duration <= 0
-        ):
+        if state in {"stopped", "stop", "unknown"} or duration is None or duration <= 0:
             raise ConfigurationError(
                 "The integration suite requires loaded test media with a "
                 "positive duration and a known playing or paused state."

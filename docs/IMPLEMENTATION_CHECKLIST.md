@@ -21,15 +21,15 @@ accurate.
 
 ## Phase 1 — repository foundation
 
-- [ ] Add Python project configuration and backend package skeleton.
-- [ ] Add the Vite React TypeScript frontend.
-- [ ] Add Makefile, ignore rules, environment example, and README.
-- [ ] Implement the public health route without exposing secrets.
-- [ ] Add the accessible mobile application shell.
-- [ ] Establish backend and frontend test infrastructure.
-- [ ] Add continuous integration.
-- [ ] Make all required `make` commands exist.
-- [ ] Run formatting, linting, type checks, tests, and production builds.
+- [x] Add Python project configuration and backend package skeleton.
+- [x] Add the Vite React TypeScript frontend.
+- [x] Add Makefile, ignore rules, environment example, and README.
+- [x] Implement the public health route without exposing secrets.
+- [x] Add the accessible mobile application shell.
+- [x] Establish backend and frontend test infrastructure.
+- [x] Add continuous integration.
+- [x] Make all required `make` commands exist.
+- [x] Run formatting, linting, type checks, tests, and production builds.
 
 ## Phase 2 — authenticated VLC backend
 
