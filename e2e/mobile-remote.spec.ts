@@ -22,6 +22,12 @@ const pausedStatus = {
   updatedAt: "2026-07-29T12:00:00Z"
 };
 
+test.beforeEach(async ({ page }) => {
+  await page.route("https://en.wikipedia.org/w/api.php**", (route) =>
+    route.fulfill({ contentType: "application/json", body: "{}" })
+  );
+});
+
 async function mockOnlineStatus(page: Page) {
   await page.route("**/api/v1/status", (route) =>
     route.fulfill({ contentType: "application/json", body: JSON.stringify(pausedStatus) })
@@ -105,7 +111,7 @@ test("pairs from a fragment and forgets the Mac", async ({ page }) => {
     )
   ).toBeGreaterThan(100);
   expect(await page.locator(".transport").evaluate((element) => getComputedStyle(element).gap)).toBe(
-    "40px"
+    "30px"
   );
   await page.getByRole("button", { name: "Open remote settings" }).click();
   await expect(page.getByRole("dialog", { name: "Remote settings" })).toBeVisible();

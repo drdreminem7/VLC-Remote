@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useRemote } from "./hooks/useRemote";
+import { lookupMoviePoster } from "./api/poster";
 import type { ConnectionState, VlcStatus } from "./types";
 import { clamp, formatDuration } from "./utils/time";
 
@@ -181,10 +182,13 @@ export default function App() {
   const remote = useRemote();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [seekPreview, setSeekPreview] = useState<number | null>(null);
+  const [poster, setPoster] = useState<{ title: string; url: string } | null>(null);
   const seekingRef = useRef(false);
   const seekPreviewRef = useRef<number | null>(null);
 
   const status = remote.status;
+  const mediaSource = status?.media.title || status?.media.filename || "";
+  const posterTitle = mediaSource ? movieTitle(mediaSource) : null;
   const isConnected = remote.connection === "online" && status !== null;
   const controlsEnabled = isConnected;
   const duration = status?.time.durationSeconds ?? null;
@@ -209,6 +213,23 @@ export default function App() {
       seekPreviewRef.current = null;
     }
   }, [status?.time.elapsedSeconds]);
+
+  useEffect(() => {
+    if (posterTitle === null) {
+      return undefined;
+    }
+
+    const controller = new AbortController();
+    void lookupMoviePoster(posterTitle, controller.signal).then((url) => {
+      if (!controller.signal.aborted && url !== null) {
+        setPoster({ title: posterTitle, url });
+      }
+    });
+
+    return () => controller.abort();
+  }, [posterTitle]);
+
+  const posterUrl = poster?.title === posterTitle ? poster.url : null;
 
   useEffect(() => {
     if (!settingsOpen) {
@@ -294,6 +315,16 @@ export default function App() {
 
         <section className="touch-surface" aria-labelledby="media-title">
           <div className="touch-surface__texture" aria-hidden="true" />
+          {posterUrl ? (
+            <div className="touch-surface__artwork" aria-hidden="true">
+              <img
+                alt=""
+                loading="lazy"
+                onError={() => setPoster(null)}
+                src={posterUrl}
+              />
+            </div>
+          ) : null}
           <div className="touch-surface__content">
             <p className="eyebrow">
               {status === null

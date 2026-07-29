@@ -29,8 +29,59 @@ function response(payload: object, status = 200): Response {
   return new Response(JSON.stringify(payload), { status });
 }
 
+function requestUrl(input: Parameters<typeof fetch>[0]): string {
+  if (typeof input === "string") {
+    return input;
+  }
+  if (input instanceof URL) {
+    return input.toString();
+  }
+  return input.url;
+}
+
+function remoteFetch(
+  ...responses: Array<Response | Promise<Response>>
+): ReturnType<typeof vi.fn<typeof fetch>> {
+  const queue = [...responses];
+  return vi.fn<typeof fetch>().mockImplementation((input) => {
+    if (requestUrl(input).startsWith("https://en.wikipedia.org/")) {
+      return Promise.resolve(response({}));
+    }
+    return Promise.resolve(queue.shift() ?? response(pausedStatus));
+  });
+}
+
 function pairedFetch(): ReturnType<typeof vi.fn<typeof fetch>> {
-  return vi.fn<typeof fetch>().mockResolvedValue(response(pausedStatus));
+  return remoteFetch(response(pausedStatus));
+}
+
+function remoteFetchWithPoster(): ReturnType<typeof vi.fn<typeof fetch>> {
+  const fetchMock = remoteFetch(response(pausedStatus));
+  fetchMock.mockImplementation((input) => {
+    if (requestUrl(input).startsWith("https://en.wikipedia.org/")) {
+      return Promise.resolve(
+        response({
+          query: {
+            pages: {
+              "1": {
+                thumbnail: {
+                  source: "https://upload.wikimedia.org/poster.jpg"
+                }
+              }
+            }
+          }
+        })
+      );
+    }
+    return Promise.resolve(response(pausedStatus));
+  });
+  return fetchMock;
+}
+
+function apiUrls(fetchMock: ReturnType<typeof vi.fn<typeof fetch>>): string[] {
+  return fetchMock.mock.calls
+    .map(([url]) => requestUrl(url))
+    .filter((url) => url.startsWith("/api/"));
 }
 
 beforeEach(() => {
@@ -90,13 +141,25 @@ describe("mobile remote", () => {
     );
   });
 
+  it("shows movie artwork when a matching poster is found", async () => {
+    window.localStorage.setItem("mac-vlc-remote.access-token.v1", TOKEN);
+    const fetchMock = remoteFetchWithPoster();
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(document.querySelector(".touch-surface__artwork img")).toHaveAttribute(
+        "src",
+        "https://upload.wikimedia.org/poster.jpg"
+      );
+    });
+  });
+
   it("sends one fixed toggle request and applies the returned status", async () => {
     window.localStorage.setItem("mac-vlc-remote.access-token.v1", TOKEN);
     const playingStatus = { ...pausedStatus, state: "playing" };
-    const fetchMock = vi
-      .fn<typeof fetch>()
-      .mockResolvedValueOnce(response(pausedStatus))
-      .mockResolvedValueOnce(response(playingStatus));
+    const fetchMock = remoteFetch(response(pausedStatus), response(playingStatus));
     vi.stubGlobal("fetch", fetchMock);
 
     render(<App />);
@@ -107,7 +170,7 @@ describe("mobile remote", () => {
     await waitFor(() => {
       expect(screen.getByRole("button", { name: "Pause playback" })).toBeEnabled();
     });
-    expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
+    expect(apiUrls(fetchMock)).toEqual([
       "/api/v1/status",
       "/api/v1/playback/toggle"
     ]);
@@ -120,10 +183,7 @@ describe("mobile remote", () => {
       resolveCommand = resolve;
     });
     const playingStatus = { ...pausedStatus, state: "playing" };
-    const fetchMock = vi
-      .fn<typeof fetch>()
-      .mockResolvedValueOnce(response(pausedStatus))
-      .mockReturnValueOnce(commandResponse);
+    const fetchMock = remoteFetch(response(pausedStatus), commandResponse);
     vi.stubGlobal("fetch", fetchMock);
 
     render(<App />);
@@ -145,17 +205,14 @@ describe("mobile remote", () => {
       ...pausedStatus,
       audio: { volumePercent: 0, muted: true }
     };
-    const fetchMock = vi
-      .fn<typeof fetch>()
-      .mockResolvedValueOnce(response(pausedStatus))
-      .mockResolvedValueOnce(response(mutedStatus));
+    const fetchMock = remoteFetch(response(pausedStatus), response(mutedStatus));
     vi.stubGlobal("fetch", fetchMock);
 
     render(<App />);
     fireEvent.click(await screen.findByRole("button", { name: "Mute audio" }));
 
     expect(await screen.findByRole("button", { name: "Unmute audio" })).toBeEnabled();
-    expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
+    expect(apiUrls(fetchMock)).toEqual([
       "/api/v1/status",
       "/api/v1/audio/mute"
     ]);
@@ -167,10 +224,7 @@ describe("mobile remote", () => {
       ...pausedStatus,
       audio: { volumePercent: 73, muted: false }
     };
-    const fetchMock = vi
-      .fn<typeof fetch>()
-      .mockResolvedValueOnce(response(pausedStatus))
-      .mockResolvedValueOnce(response(louderStatus));
+    const fetchMock = remoteFetch(response(pausedStatus), response(louderStatus));
     vi.stubGlobal("fetch", fetchMock);
 
     render(<App />);
@@ -187,12 +241,7 @@ describe("mobile remote", () => {
 
   it("rounds VLC's imprecise playback-rate response for the speed selector", async () => {
     window.localStorage.setItem("mac-vlc-remote.access-token.v1", TOKEN);
-    vi.stubGlobal(
-      "fetch",
-      vi.fn<typeof fetch>().mockResolvedValue(
-        response({ ...pausedStatus, playbackRate: 0.75018 })
-      )
-    );
+    vi.stubGlobal("fetch", remoteFetch(response({ ...pausedStatus, playbackRate: 0.75018 })));
 
     render(<App />);
 
@@ -211,7 +260,7 @@ describe("mobile remote", () => {
 
     fireEvent.change(timeline, { target: { value: "1800" } });
     expect(screen.getByText("30:00")).toBeInTheDocument();
-    expect(fetchMock.mock.calls.map(([url]) => url)).toEqual(["/api/v1/status"]);
+    expect(apiUrls(fetchMock)).toEqual(["/api/v1/status"]);
 
     fireEvent.pointerUp(timeline);
     await waitFor(() => {
@@ -249,7 +298,7 @@ describe("mobile remote", () => {
 
   it("shows actionable VLC failure messaging and leaves controls disabled", async () => {
     window.localStorage.setItem("mac-vlc-remote.access-token.v1", TOKEN);
-    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+    const fetchMock = remoteFetch(
       response(
         {
           error: {
