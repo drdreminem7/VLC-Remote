@@ -8,7 +8,7 @@ const TOKEN = "t".repeat(43);
 const pausedStatus = {
   connection: { backend: "online", vlc: "online" },
   state: "paused",
-  media: { title: "Moonrise, Chapter Four", filename: "moonrise.mkv" },
+  media: { title: "Moonrise, Chapter Four.mkv", filename: "moonrise.mkv" },
   time: { elapsedSeconds: 1482, durationSeconds: 6420, position: 0.23 },
   audio: { volumePercent: 68, muted: false },
   playbackRate: 1,
@@ -77,6 +77,7 @@ describe("mobile remote", () => {
       ).toBeInTheDocument();
     });
     expect(screen.getByRole("status")).toHaveTextContent("Connected");
+    expect(screen.getAllByText("Paused")).toHaveLength(1);
     expect(screen.getByRole("button", { name: "Play playback" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "Skip backward 10 seconds" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "Skip forward 10 seconds" })).toBeEnabled();

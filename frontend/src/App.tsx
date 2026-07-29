@@ -5,6 +5,8 @@ import type { ConnectionState, VlcStatus } from "./types";
 import { clamp, formatDuration } from "./utils/time";
 
 const DEFAULT_RATES = [0.5, 0.75, 1, 1.25, 1.5, 2];
+const VIDEO_FILE_EXTENSION =
+  /\.(?:3g2|3gp|asf|avi|divx|flv|m2ts|m4v|mkv|mov|mp4|mpeg|mpg|mts|ogm|ogv|ts|vob|webm|wmv)$/i;
 
 function normalizePlaybackRate(rate: number): number {
   return Math.round(rate * 100) / 100;
@@ -116,9 +118,23 @@ function connectionLabel(connection: ConnectionState): string {
   }
 }
 
+function movieTitle(title: string): string {
+  const filename = title.split(/[\\/]/).at(-1) ?? title;
+  const withoutExtension = filename.replace(VIDEO_FILE_EXTENSION, "");
+
+  return withoutExtension || filename;
+}
+
+function playbackStateLabel(state: VlcStatus["state"]): string {
+  return state === "playing" ? "Playing" : "Paused";
+}
+
 function mediaHeading(status: VlcStatus | null, connection: ConnectionState): string {
   if (status?.media.title) {
-    return status.media.title;
+    return movieTitle(status.media.title);
+  }
+  if (status?.media.filename) {
+    return movieTitle(status.media.filename);
   }
   if (connection === "unauthenticated") {
     return "Pair this phone.";
@@ -134,7 +150,7 @@ function mediaHeading(status: VlcStatus | null, connection: ConnectionState): st
 
 function mediaDescription(status: VlcStatus | null, connection: ConnectionState): string {
   if (status !== null) {
-    return status.state === "playing" ? "Playing" : "Paused";
+    return "";
   }
   if (connection === "unauthenticated") {
     return "Open the pairing link from your Mac to connect this phone.";
@@ -247,6 +263,7 @@ export default function App() {
 
   const isPlaying = status?.state === "playing";
   const primaryLabel = isPlaying ? "Pause playback" : "Play playback";
+  const description = mediaDescription(status, remote.connection);
 
   return (
     <main className="experience" id="main-content">
@@ -284,10 +301,12 @@ export default function App() {
           <div className="touch-surface__texture" aria-hidden="true" />
           <div className="touch-surface__content">
             <p className="eyebrow">
-              {status === null ? connectionLabel(remote.connection) : status.state}
+              {status === null
+                ? connectionLabel(remote.connection)
+                : playbackStateLabel(status.state)}
             </p>
             <h1 id="media-title">{mediaHeading(status, remote.connection)}</h1>
-            <p className="touch-surface__message">{mediaDescription(status, remote.connection)}</p>
+            {description ? <p className="touch-surface__message">{description}</p> : null}
           </div>
 
           <div className="timeline" aria-label="Playback timeline">
@@ -317,7 +336,6 @@ export default function App() {
             />
             <div className="timeline__labels">
               <time>{formatDuration(displayedElapsed)}</time>
-              <span>{status === null ? "Waiting for VLC" : status.state}</span>
               <time>{formatDuration(duration)}</time>
             </div>
           </div>
