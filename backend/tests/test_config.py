@@ -1,5 +1,7 @@
 """Tests for strict environment-backed settings."""
 
+from pathlib import Path
+
 import pytest
 from pydantic import ValidationError
 
@@ -38,11 +40,12 @@ def test_settings_reject_unsafe_values(field: str, value: str) -> None:
         Settings.model_validate({field: value})
 
 
-def test_empty_secrets_leave_services_unconfigured() -> None:
+def test_empty_secrets_leave_services_unconfigured(tmp_path: Path) -> None:
     settings = Settings.model_validate(
         {
             "vlc_http_password": "",
             "vlc_remote_access_token": "",
+            "vlc_remote_state_directory": tmp_path,
         }
     )
 

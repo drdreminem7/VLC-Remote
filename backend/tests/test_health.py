@@ -5,11 +5,14 @@ from pathlib import Path
 from httpx import ASGITransport, AsyncClient
 from pytest import MonkeyPatch
 
+from backend.app.config import Settings
 from backend.app.main import create_app
 
 
-async def test_health_is_public_and_contains_no_secrets() -> None:
-    transport = ASGITransport(app=create_app())
+async def test_health_is_public_and_contains_no_secrets(tmp_path: Path) -> None:
+    transport = ASGITransport(
+        app=create_app(settings=Settings(vlc_remote_state_directory=tmp_path))
+    )
     async with AsyncClient(transport=transport, base_url="http://localhost") as client:
         response = await client.get("/api/v1/health")
 
@@ -33,7 +36,9 @@ async def test_root_explains_how_to_build_frontend_when_assets_are_absent(
     monkeypatch: MonkeyPatch,
 ) -> None:
     monkeypatch.setattr("backend.app.main.frontend_directory", lambda: tmp_path)
-    transport = ASGITransport(app=create_app())
+    transport = ASGITransport(
+        app=create_app(settings=Settings(vlc_remote_state_directory=tmp_path))
+    )
     async with AsyncClient(transport=transport, base_url="http://localhost") as client:
         response = await client.get("/")
 

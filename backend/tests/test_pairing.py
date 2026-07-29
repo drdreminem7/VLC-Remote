@@ -2,7 +2,11 @@
 
 import pytest
 
-from backend.app.services.pairing import _private_ipv4_candidates, pairing_url
+from backend.app.services.pairing import (
+    _canonical_hostname,
+    _private_ipv4_candidates,
+    pairing_url,
+)
 
 
 def test_pairing_url_keeps_token_out_of_server_side_request() -> None:
@@ -29,3 +33,7 @@ def test_private_ipv4_candidates_exclude_public_and_loopback_addresses() -> None
     assert _private_ipv4_candidates(["127.0.0.1", "8.8.8.8", "192.168.1.40"]) == [
         "192.168.1.40"
     ]
+
+
+def test_hostname_normalization_matches_browser_host_headers() -> None:
+    assert _canonical_hostname("Harrys-MacBook-Pro.") == "harrys-macbook-pro"

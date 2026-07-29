@@ -1,6 +1,7 @@
 """Validated application configuration loaded from environment variables."""
 
 from functools import lru_cache
+from pathlib import Path
 from typing import Literal
 from urllib.parse import urlsplit
 
@@ -31,6 +32,7 @@ class Settings(BaseSettings):
     vlc_remote_log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
     vlc_remote_allowed_hosts: str = "localhost,127.0.0.1"
     vlc_remote_enable_discovery: bool = True
+    vlc_remote_state_directory: Path | None = Field(default=None, exclude=True)
     _generated_access_token: SecretStr | None = PrivateAttr(default=None)
 
     @field_validator("vlc_http_password", "vlc_remote_access_token", mode="before")
@@ -102,7 +104,9 @@ class Settings(BaseSettings):
         if self._generated_access_token is not None:
             return self._generated_access_token
         try:
-            self._generated_access_token = SecretStr(load_or_create_access_token())
+            self._generated_access_token = SecretStr(
+                load_or_create_access_token(directory=self.vlc_remote_state_directory)
+            )
         except SecretStoreError as exc:
             raise ValueError("Could not load the local remote access token.") from exc
         return self._generated_access_token
@@ -113,7 +117,7 @@ class Settings(BaseSettings):
         if self.vlc_http_password is not None:
             return self.vlc_http_password
         try:
-            password = load_vlc_http_password()
+            password = load_vlc_http_password(directory=self.vlc_remote_state_directory)
         except SecretStoreError as exc:
             raise ValueError("Could not load the local VLC HTTP password.") from exc
         return SecretStr(password) if password else None

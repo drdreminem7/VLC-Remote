@@ -49,6 +49,11 @@ def _is_valid_hostname(value: str) -> bool:
     return bool(_HOST_PATTERN.fullmatch(value)) and not value.startswith(".")
 
 
+def _canonical_hostname(value: str) -> str | None:
+    hostname = value.strip().rstrip(".").lower()
+    return hostname if _is_valid_hostname(hostname) else None
+
+
 def _private_ipv4_candidates(values: Iterable[str]) -> list[str]:
     addresses: list[str] = []
     for value in values:
@@ -74,11 +79,12 @@ def discover_pairing_hosts() -> list[str]:
 
     hosts: list[str] = []
     local_name = _command_output(["scutil", "--get", "LocalHostName"])
-    if local_name and _is_valid_hostname(local_name):
-        hosts.append(f"{local_name}.local")
+    canonical_local_name = _canonical_hostname(local_name) if local_name else None
+    if canonical_local_name and _is_valid_hostname(canonical_local_name):
+        hosts.append(f"{canonical_local_name}.local")
 
-    system_name = socket.gethostname().split(".", maxsplit=1)[0]
-    if _is_valid_hostname(system_name):
+    system_name = _canonical_hostname(socket.gethostname().split(".", maxsplit=1)[0])
+    if system_name:
         system_host = f"{system_name}.local"
         if system_host not in hosts:
             hosts.append(system_host)
