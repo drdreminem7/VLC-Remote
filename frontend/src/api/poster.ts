@@ -1,44 +1,13 @@
-const WIKIMEDIA_API = "https://en.wikipedia.org/w/api.php";
-
-type SearchPage = {
-  thumbnail?: {
-    source?: unknown;
-  };
-};
-
-type SearchResponse = {
-  query?: {
-    pages?: Record<string, SearchPage>;
-  };
-};
-
 const posterCache = new Map<string, string>();
-
-function isSearchResponse(value: unknown): value is SearchResponse {
-  return typeof value === "object" && value !== null;
-}
-
-function posterFromResponse(value: unknown): string | null {
-  if (!isSearchResponse(value) || value.query?.pages === undefined) {
-    return null;
-  }
-
-  for (const page of Object.values(value.query.pages)) {
-    const source = page.thumbnail?.source;
-    if (typeof source === "string" && source.startsWith("https://upload.wikimedia.org/")) {
-      return source;
-    }
-  }
-
-  return null;
-}
+type ArtworkResponse = { imageData?: unknown };
 
 export async function lookupMoviePoster(
   title: string,
+  accessToken: string | null,
   signal?: AbortSignal
 ): Promise<string | null> {
   const query = title.trim();
-  if (!query) {
+  if (!query || accessToken === null) {
     return null;
   }
 
@@ -47,29 +16,29 @@ export async function lookupMoviePoster(
     return cachedPoster;
   }
 
-  const parameters = new URLSearchParams({
-    action: "query",
-    format: "json",
-    generator: "search",
-    gsrnamespace: "0",
-    gsrsearch: query,
-    gsrlimit: "3",
-    origin: "*",
-    pithumbsize: "640",
-    piprop: "thumbnail",
-    prop: "pageimages"
-  });
+  const parameters = new URLSearchParams({ title: query });
 
   try {
-    const response = await fetch(`${WIKIMEDIA_API}?${parameters.toString()}`, {
-      headers: { Accept: "application/json" },
+    const response = await fetch(`/api/v1/artwork?${parameters.toString()}`, {
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${accessToken}`
+      },
       ...(signal === undefined ? {} : { signal })
     });
     if (!response.ok) {
       return null;
     }
 
-    const poster = posterFromResponse(await response.json().catch(() => null));
+    const payload: unknown = await response.json().catch(() => null);
+    const imageData =
+      typeof payload === "object" && payload !== null
+        ? (payload as ArtworkResponse).imageData
+        : null;
+    const poster =
+      typeof imageData === "string" && imageData.startsWith("data:image/")
+        ? imageData
+        : null;
     if (poster !== null) {
       posterCache.set(query, poster);
     }

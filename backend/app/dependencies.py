@@ -8,6 +8,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from backend.app.config import Settings
 from backend.app.errors import ApiException
+from backend.app.services.movie_artwork import MovieArtworkLookupProtocol
 from backend.app.services.status_coordinator import StatusCoordinator
 from backend.app.services.vlc_client import VlcClientProtocol
 
@@ -24,6 +25,10 @@ def get_vlc_client(request: Request) -> VlcClientProtocol:
 
 def get_status_coordinator(request: Request) -> StatusCoordinator:
     return cast(StatusCoordinator, request.app.state.status_coordinator)
+
+
+def get_artwork_lookup(request: Request) -> MovieArtworkLookupProtocol:
+    return cast(MovieArtworkLookupProtocol, request.app.state.artwork_lookup)
 
 
 async def require_access_token(

@@ -19,9 +19,14 @@ from backend.app.errors import (
     validation_exception_handler,
     vlc_exception_handler,
 )
+from backend.app.routers.artwork import router as artwork_router
 from backend.app.routers.controls import router as controls_router
 from backend.app.routers.health import router as health_router
 from backend.app.routers.status import router as status_router
+from backend.app.services.movie_artwork import (
+    MovieArtworkLookup,
+    MovieArtworkLookupProtocol,
+)
 from backend.app.services.status_coordinator import StatusCoordinator
 from backend.app.services.vlc_client import (
     HttpxVlcClient,
@@ -40,6 +45,7 @@ def create_app(
     *,
     settings: Settings | None = None,
     vlc_client: VlcClientProtocol | None = None,
+    artwork_lookup: MovieArtworkLookupProtocol | None = None,
 ) -> FastAPI:
     """Build an application instance suitable for production and tests."""
 
@@ -50,12 +56,14 @@ def create_app(
         active_vlc_client = HttpxVlcClient.from_settings(active_settings)
     else:
         active_vlc_client = UnconfiguredVlcClient()
+    active_artwork_lookup = artwork_lookup or MovieArtworkLookup()
 
     @asynccontextmanager
     async def lifespan(_application: FastAPI) -> AsyncIterator[None]:
         yield
         if isinstance(active_vlc_client, HttpxVlcClient):
             await active_vlc_client.aclose()
+        await active_artwork_lookup.aclose()
 
     application = FastAPI(
         title="Mac VLC Remote",
@@ -69,6 +77,7 @@ def create_app(
     application.state.settings = active_settings
     application.state.vlc_client = active_vlc_client
     application.state.status_coordinator = StatusCoordinator()
+    application.state.artwork_lookup = active_artwork_lookup
 
     application.add_middleware(
         TrustedHostMiddleware,
@@ -84,6 +93,7 @@ def create_app(
     application.include_router(health_router, prefix="/api/v1")
     application.include_router(status_router, prefix="/api/v1")
     application.include_router(controls_router, prefix="/api/v1")
+    application.include_router(artwork_router, prefix="/api/v1")
 
     @application.api_route(
         "/api/{unmatched_path:path}",

@@ -23,8 +23,11 @@ const pausedStatus = {
 };
 
 test.beforeEach(async ({ page }) => {
-  await page.route("https://en.wikipedia.org/w/api.php**", (route) =>
-    route.fulfill({ contentType: "application/json", body: "{}" })
+  await page.route("**/api/v1/artwork**", (route) =>
+    route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ imageData: null })
+    })
   );
 });
 

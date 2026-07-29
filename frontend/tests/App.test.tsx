@@ -44,8 +44,8 @@ function remoteFetch(
 ): ReturnType<typeof vi.fn<typeof fetch>> {
   const queue = [...responses];
   return vi.fn<typeof fetch>().mockImplementation((input) => {
-    if (requestUrl(input).startsWith("https://en.wikipedia.org/")) {
-      return Promise.resolve(response({}));
+    if (requestUrl(input).startsWith("/api/v1/artwork")) {
+      return Promise.resolve(response({ imageData: null }));
     }
     return Promise.resolve(queue.shift() ?? response(pausedStatus));
   });
@@ -58,18 +58,10 @@ function pairedFetch(): ReturnType<typeof vi.fn<typeof fetch>> {
 function remoteFetchWithPoster(): ReturnType<typeof vi.fn<typeof fetch>> {
   const fetchMock = remoteFetch(response(pausedStatus));
   fetchMock.mockImplementation((input) => {
-    if (requestUrl(input).startsWith("https://en.wikipedia.org/")) {
+    if (requestUrl(input).startsWith("/api/v1/artwork")) {
       return Promise.resolve(
         response({
-          query: {
-            pages: {
-              "1": {
-                thumbnail: {
-                  source: "https://upload.wikimedia.org/poster.jpg"
-                }
-              }
-            }
-          }
+          imageData: "data:image/jpeg;base64,poster"
         })
       );
     }
@@ -81,7 +73,7 @@ function remoteFetchWithPoster(): ReturnType<typeof vi.fn<typeof fetch>> {
 function apiUrls(fetchMock: ReturnType<typeof vi.fn<typeof fetch>>): string[] {
   return fetchMock.mock.calls
     .map(([url]) => requestUrl(url))
-    .filter((url) => url.startsWith("/api/"));
+    .filter((url) => url.startsWith("/api/") && !url.startsWith("/api/v1/artwork"));
 }
 
 beforeEach(() => {
@@ -151,7 +143,7 @@ describe("mobile remote", () => {
     await waitFor(() => {
       expect(document.querySelector(".touch-surface__artwork img")).toHaveAttribute(
         "src",
-        "https://upload.wikimedia.org/poster.jpg"
+        "data:image/jpeg;base64,poster"
       );
     });
   });

@@ -10,6 +10,14 @@ from backend.app.services.fake_vlc_client import FakeVlcClient
 ACCESS_TOKEN = "phase-two-test-token-" + ("a" * 24)
 
 
+class FakeArtworkLookup:
+    async def lookup(self, title: str) -> str | None:
+        return "data:image/jpeg;base64,poster" if title == "The Quiet Film" else None
+
+    async def aclose(self) -> None:
+        return None
+
+
 def api_settings() -> Settings:
     return Settings.model_validate(
         {
@@ -25,8 +33,15 @@ def authorization(token: str = ACCESS_TOKEN) -> dict[str, str]:
 
 def request_client(
     fake: FakeVlcClient,
+    artwork: FakeArtworkLookup | None = None,
 ) -> tuple[AsyncClient, ASGITransport]:
-    transport = ASGITransport(app=create_app(settings=api_settings(), vlc_client=fake))
+    transport = ASGITransport(
+        app=create_app(
+            settings=api_settings(),
+            vlc_client=fake,
+            artwork_lookup=artwork,
+        )
+    )
     client = AsyncClient(transport=transport, base_url="http://localhost")
     return client, transport
 
@@ -57,6 +72,24 @@ async def test_status_requires_valid_bearer_token() -> None:
     assert valid.json()["media"]["title"] == "Moonrise, Chapter Four"
     assert valid.json()["capabilities"]["audioTrackSelection"] is False
     assert ACCESS_TOKEN not in valid.text
+
+
+async def test_artwork_lookup_is_authenticated_and_same_origin() -> None:
+    client, _transport = request_client(FakeVlcClient(), FakeArtworkLookup())
+    async with client:
+        missing = await client.get(
+            "/api/v1/artwork",
+            params={"title": "The Quiet Film"},
+        )
+        valid = await client.get(
+            "/api/v1/artwork",
+            params={"title": "The Quiet Film"},
+            headers=authorization(),
+        )
+
+    assert missing.status_code == 401
+    assert valid.status_code == 200
+    assert valid.json() == {"imageData": "data:image/jpeg;base64,poster"}
 
 
 async def test_fixed_playback_and_audio_commands_return_updated_status() -> None:

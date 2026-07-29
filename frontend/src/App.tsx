@@ -220,14 +220,14 @@ export default function App() {
     }
 
     const controller = new AbortController();
-    void lookupMoviePoster(posterTitle, controller.signal).then((url) => {
+    void lookupMoviePoster(posterTitle, remote.token, controller.signal).then((url) => {
       if (!controller.signal.aborted && url !== null) {
         setPoster({ title: posterTitle, url });
       }
     });
 
     return () => controller.abort();
-  }, [posterTitle]);
+  }, [posterTitle, remote.token]);
 
   const posterUrl = poster?.title === posterTitle ? poster.url : null;
 
