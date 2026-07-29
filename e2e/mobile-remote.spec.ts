@@ -28,6 +28,20 @@ async function mockOnlineStatus(page: Page) {
   );
 }
 
+async function expectNoPressedColorFlash(page: Page, name: string) {
+  const button = page.getByRole("button", { name });
+  const before = await button.evaluate((element) => getComputedStyle(element).backgroundColor);
+  const box = await button.boundingBox();
+  if (box === null) {
+    throw new Error(`Could not measure ${name}`);
+  }
+
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  expect(await button.evaluate((element) => getComputedStyle(element).backgroundColor)).toBe(before);
+  await page.mouse.up();
+}
+
 test("pairs from a fragment and forgets the Mac", async ({ page }) => {
   await mockOnlineStatus(page);
 
@@ -78,6 +92,24 @@ test("previews a timeline drag and sends exactly one seek on release", async ({ 
 
   await timeline.dispatchEvent("pointerup");
   await expect.poll(() => seekRequests).toBe(1);
+});
+
+test("keeps transport and mute button colors stable while pressed", async ({ page }) => {
+  await mockOnlineStatus(page);
+  await page.route("**/api/v1/playback/toggle", (route) =>
+    route.fulfill({ contentType: "application/json", body: JSON.stringify(pausedStatus) })
+  );
+  await page.route("**/api/v1/playback/seek", (route) =>
+    route.fulfill({ contentType: "application/json", body: JSON.stringify(pausedStatus) })
+  );
+  await page.route("**/api/v1/audio/mute", (route) =>
+    route.fulfill({ contentType: "application/json", body: JSON.stringify(pausedStatus) })
+  );
+
+  await page.goto(`/#token=${TOKEN}`);
+  await expectNoPressedColorFlash(page, "Play playback");
+  await expectNoPressedColorFlash(page, "Skip backward 10 seconds");
+  await expectNoPressedColorFlash(page, "Mute audio");
 });
 
 test("recovers from a temporary backend failure", async ({ page }) => {
