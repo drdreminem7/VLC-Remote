@@ -73,3 +73,7 @@ def test_menu_bar_adds_common_node_paths_for_dock_launches(
     assert run_menu_bar_service.configure_node_path() == "/usr/local/bin/npm"
     assert run_menu_bar_service.NODE_BIN_DIRECTORIES[0] == Path("/usr/local/bin")
     assert run_menu_bar_service.NODE_BIN_DIRECTORIES[1] == Path("/opt/homebrew/bin")
+
+
+def test_menu_bar_uses_a_distinct_exit_code_for_running_vlc() -> None:
+    assert run_menu_bar_service.VLC_ALREADY_RUNNING_EXIT_CODE == 12

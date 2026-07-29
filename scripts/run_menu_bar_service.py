@@ -16,11 +16,12 @@ from backend.app.services.secret_store import load_vlc_http_password
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 NODE_BIN_DIRECTORIES = (Path("/usr/local/bin"), Path("/opt/homebrew/bin"))
+VLC_ALREADY_RUNNING_EXIT_CODE = 12
 
 
-def fail(message: str) -> int:
+def fail(message: str, *, exit_code: int = 1) -> int:
     print(message, file=sys.stderr)
-    return 1
+    return exit_code
 
 
 def run_checked(command: list[str], *, description: str) -> int:
@@ -68,6 +69,19 @@ def main() -> int:
 
     if local_vlc_http_is_reusable():
         print("Reusing the existing local VLC HTTP service.")
+    elif (
+        subprocess.run(
+            ["pgrep", "-x", "VLC"],
+            check=False,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        ).returncode
+        == 0
+    ):
+        return fail(
+            "VLC is already running without this remote's local HTTP connection.",
+            exit_code=VLC_ALREADY_RUNNING_EXIT_CODE,
+        )
     elif run_checked([str(python), str(launcher)], description="VLC launch") != 0:
         return 1
     if run_checked([npm, "run", "build"], description="Frontend build") != 0:

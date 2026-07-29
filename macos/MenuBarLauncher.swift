@@ -5,6 +5,7 @@ import Foundation
 private enum LauncherError: LocalizedError {
     case invalidProjectFolder
     case pairingUnavailable
+    case vlcAlreadyRunning
 
     var errorDescription: String? {
         switch self {
@@ -12,6 +13,8 @@ private enum LauncherError: LocalizedError {
             return "Choose the VLC Remote project folder (the one containing Makefile)."
         case .pairingUnavailable:
             return "The remote started, but its pairing QR could not be created. See the service log."
+        case .vlcAlreadyRunning:
+            return "VLC is already open without the local remote connection. Quit VLC, then open VLC Remote again."
         }
     }
 }
@@ -29,6 +32,7 @@ final class MenuBarLauncher: NSObject, NSApplicationDelegate {
     private var qrWindow: NSWindow?
     private var isStarting = false
     private var startsAfterProjectSelection = false
+    private var startupError: Error?
 
     static func main() {
         let application = NSApplication.shared
@@ -156,12 +160,16 @@ final class MenuBarLauncher: NSObject, NSApplicationDelegate {
                     self?.serviceProcess = nil
                     self?.pairingURL = nil
                     self?.isStarting = false
+                    if process.terminationStatus == 12 {
+                        self?.startupError = LauncherError.vlcAlreadyRunning
+                    }
                     self?.qrWindow?.close()
                     self?.updateMenuState()
                 }
             }
             try process.run()
             serviceProcess = process
+            startupError = nil
             isStarting = true
             updateMenuState()
             waitForServiceReady(from: root, attemptsRemaining: 40)
@@ -175,6 +183,7 @@ final class MenuBarLauncher: NSObject, NSApplicationDelegate {
         qrWindow?.close()
         pairingURL = nil
         isStarting = false
+        startupError = nil
         if let process = serviceProcess, process.isRunning {
             process.terminate()
         }
@@ -249,7 +258,9 @@ final class MenuBarLauncher: NSObject, NSApplicationDelegate {
         guard let process = serviceProcess, process.isRunning else {
             isStarting = false
             updateMenuState()
-            present(error: LauncherError.pairingUnavailable)
+            let error = startupError ?? LauncherError.pairingUnavailable
+            startupError = nil
+            present(error: error)
             return
         }
         let healthURL = URL(string: "http://127.0.0.1:8000/api/v1/health")!
