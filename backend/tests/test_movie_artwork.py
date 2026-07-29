@@ -139,6 +139,50 @@ async def test_lookup_retries_a_parenthesized_year_without_a_year_filter() -> No
     assert requests[2].url.host == "image.tmdb.org"
 
 
+async def test_lookup_does_not_cache_a_temporary_miss() -> None:
+    tmdb_searches = 0
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal tmdb_searches
+        if request.url.host == "api.themoviedb.org":
+            tmdb_searches += 1
+            if tmdb_searches == 1:
+                return httpx.Response(200, json={"results": []})
+            return httpx.Response(
+                200,
+                json={
+                    "results": [
+                        {
+                            "title": "The Quiet Film",
+                            "poster_path": "/quiet-film.jpg",
+                            "popularity": 3.0,
+                        }
+                    ]
+                },
+            )
+        if request.url.host == "en.wikipedia.org":
+            return httpx.Response(200, json={"query": {"pages": {}}})
+        return httpx.Response(
+            200,
+            content=b"poster",
+            headers={"content-type": "image/jpeg"},
+        )
+
+    lookup = MovieArtworkLookup(
+        tmdb_api_token="tmdb-secret",
+        transport=httpx.MockTransport(handler),
+    )
+    try:
+        first_result = await lookup.lookup("The Quiet Film")
+        second_result = await lookup.lookup("The Quiet Film")
+    finally:
+        await lookup.aclose()
+
+    assert first_result is None
+    assert second_result == "data:image/jpeg;base64,cG9zdGVy"
+    assert tmdb_searches == 2
+
+
 async def test_lookup_fetches_and_encodes_a_wikimedia_thumbnail() -> None:
     requests: list[httpx.Request] = []
 

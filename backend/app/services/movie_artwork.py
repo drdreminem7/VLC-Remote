@@ -127,7 +127,7 @@ class MovieArtworkLookup:
             timeout=5.0,
             transport=transport,
         )
-        self._cache: dict[str, str | None] = {}
+        self._cache: dict[str, str] = {}
 
     async def _tmdb_source(self, query: str) -> str | None:
         if not self._tmdb_api_token:
@@ -201,8 +201,9 @@ class MovieArtworkLookup:
         query = title.strip()
         if not query:
             return None
-        if query in self._cache:
-            return self._cache[query]
+        cached_artwork = self._cache.get(query)
+        if cached_artwork is not None:
+            return cached_artwork
 
         source: str | None = None
         try:
@@ -216,14 +217,14 @@ class MovieArtworkLookup:
             except (httpx.HTTPError, ValueError, TypeError):
                 source = None
         if source is None:
-            self._cache[query] = None
             return None
 
         try:
             image_data = await self._image_data(source)
         except (httpx.HTTPError, ValueError, TypeError):
             image_data = None
-        self._cache[query] = image_data
+        if image_data is not None:
+            self._cache[query] = image_data
         return image_data
 
     async def aclose(self) -> None:
