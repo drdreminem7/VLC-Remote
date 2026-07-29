@@ -416,7 +416,7 @@ svg {
 .transport {
   display: grid;
   grid-template-areas: "back primary forward";
-  grid-template-columns: 3.75rem minmax(0, 1fr) 3.75rem;
+  grid-template-columns: minmax(3.75rem, 1fr) minmax(5.25rem, 1.35fr) minmax(3.75rem, 1fr);
   grid-template-rows: 1fr;
   align-items: center;
   justify-items: center;
@@ -480,7 +480,7 @@ svg {
 
 .utility-controls {
   display: grid;
-  grid-template-columns: 3.75rem minmax(0, 1fr) 3.75rem;
+  grid-template-columns: minmax(3.75rem, 1fr) minmax(5.25rem, 1.35fr) minmax(3.75rem, 1fr);
   align-items: center;
   gap: var(--space-sm);
   user-select: none;
@@ -886,7 +886,7 @@ svg {
   }
 
   .transport {
-    grid-template-columns: 3.25rem minmax(0, 1fr) 3.25rem;
+    grid-template-columns: minmax(3.25rem, 1fr) minmax(4.75rem, 1.3fr) minmax(3.25rem, 1fr);
     gap: var(--space-xs);
     padding-inline: 0;
   }
@@ -902,13 +902,14 @@ svg {
   }
 
   .utility-controls {
-    grid-template-columns: 3.25rem minmax(0, 1fr) 3.25rem;
+    grid-template-columns: minmax(3.25rem, 1fr) minmax(4.75rem, 1.3fr) minmax(3.25rem, 1fr);
     gap: var(--space-xs);
   }
 
   .volume-control {
-    grid-template-columns: 3rem minmax(2.5rem, 1fr) 3rem;
+    grid-template-columns: 3rem minmax(2.25rem, 1fr) 3rem;
     min-height: 3.25rem;
+    gap: 0.25rem;
   }
 
   .volume-stepper__button {
