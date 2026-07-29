@@ -1,4 +1,4 @@
-"""Public API models that contain no VLC implementation details."""
+"""Public health and error models that contain no secret values."""
 
 from typing import Literal
 
@@ -33,3 +33,33 @@ class HealthResponse(BaseModel):
 
     backend: BackendHealth
     vlc: VlcHealth
+
+
+ErrorCode = Literal[
+    "UNAUTHORIZED",
+    "INVALID_REQUEST",
+    "UNSUPPORTED_OPERATION",
+    "VLC_UNAVAILABLE",
+    "VLC_AUTHENTICATION_FAILED",
+    "VLC_COMMAND_FAILED",
+    "INTERNAL_ERROR",
+]
+
+
+class ErrorBody(BaseModel):
+    """Stable error information safe to expose to the phone."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    code: ErrorCode
+    message: str
+    retryable: bool
+    details: dict[str, object] | None = None
+
+
+class ErrorResponse(BaseModel):
+    """Consistent wrapper used by every API error."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    error: ErrorBody

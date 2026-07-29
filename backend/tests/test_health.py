@@ -1,4 +1,4 @@
-"""Tests for the public Phase 1 service surface."""
+"""Tests for the public, secret-free health surface."""
 
 from pathlib import Path
 
@@ -10,12 +10,12 @@ from backend.app.main import create_app
 
 async def test_health_is_public_and_contains_no_secrets() -> None:
     transport = ASGITransport(app=create_app())
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
+    async with AsyncClient(transport=transport, base_url="http://localhost") as client:
         response = await client.get("/api/v1/health")
 
     assert response.status_code == 200
     assert response.json() == {
-        "backend": {"status": "online", "version": "0.1.0"},
+        "backend": {"status": "online", "version": "0.2.0"},
         "vlc": {
             "status": "not_configured",
             "reachable": False,
@@ -34,7 +34,7 @@ async def test_root_explains_how_to_build_frontend_when_assets_are_absent(
 ) -> None:
     monkeypatch.setattr("backend.app.main.frontend_directory", lambda: tmp_path)
     transport = ASGITransport(app=create_app())
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
+    async with AsyncClient(transport=transport, base_url="http://localhost") as client:
         response = await client.get("/")
 
     assert response.status_code == 200

@@ -35,16 +35,16 @@ accurate.
 
 ## Phase 2 — authenticated VLC backend
 
-- [ ] Implement validated settings and secret handling.
-- [ ] Define the typed VLC protocol, HTTPX client, parser, and fake client.
-- [ ] Add normalized status and capability models.
-- [ ] Add constant-time bearer-token authentication.
-- [ ] Add standard safe API errors.
-- [ ] Add health, status, playback, seek, audio, mute, and rate routes.
-- [ ] Gate playlist, track, and fullscreen operations on compatibility evidence.
-- [ ] Deduplicate or briefly cache concurrent status requests.
-- [ ] Add fixture-driven parser, adapter, auth, validation, and API tests.
-- [ ] Run backend formatting, linting, mypy, and tests.
+- [x] Implement validated settings and secret handling.
+- [x] Define the typed VLC protocol, HTTPX client, parser, and fake client.
+- [x] Add normalized status and capability models.
+- [x] Add constant-time bearer-token authentication.
+- [x] Add standard safe API errors.
+- [x] Add health, status, playback, seek, audio, mute, and rate routes.
+- [x] Gate playlist, track, and fullscreen operations on compatibility evidence.
+- [x] Deduplicate or briefly cache concurrent status requests.
+- [x] Add fixture-driven parser, adapter, auth, validation, and API tests.
+- [x] Run backend formatting, linting, mypy, and tests.
 
 ## Phase 3 — mobile remote
 

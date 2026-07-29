@@ -17,9 +17,9 @@ Phone browser / installed PWA
 ```
 
 > [!NOTE]
-> Phase 1 establishes the tested project foundation and application shell.
-> Authenticated playback controls, pairing, and PWA installation arrive in the
-> following implementation phases.
+> Phase 2 provides the tested, authenticated VLC adapter and normalized API.
+> The interface previews the new tactile remote surface; live frontend polling,
+> pairing, and PWA installation arrive in the following phases.
 
 ## Requirements
 
@@ -50,6 +50,30 @@ make run
 
 This builds the frontend into FastAPI's static directory and serves the UI and
 API together at `http://127.0.0.1:8000`.
+
+## Phase 2 API
+
+`GET /api/v1/health` remains public and contains no secrets. Every status or
+control endpoint requires:
+
+```text
+Authorization: Bearer <VLC_REMOTE_ACCESS_TOKEN>
+```
+
+Set a random access token containing at least 32 characters before testing the
+protected API. An empty token safely rejects every protected request; persistent
+token generation and QR pairing are reserved for Phase 4.
+
+The exposed control surface is intentionally fixed:
+
+- normalized status;
+- play, pause, toggle, and stop;
+- relative or absolute seek;
+- volume, deterministic mute fallback, and playback rate.
+
+No browser-provided VLC commands or URLs are accepted. Playlist, track, and
+fullscreen routes are absent because the installed VLC build has no successful
+live compatibility evidence for them.
 
 ## VLC HTTP interface status
 
@@ -105,10 +129,13 @@ explicit state-changing mode.
 ## Security status
 
 - The browser never receives the VLC HTTP password.
+- Protected API routes use constant-time bearer-token comparison.
+- The VLC URL is restricted to HTTP loopback addresses.
 - Production does not configure wildcard CORS.
-- No browser-controlled VLC commands or shell execution exist.
-- Real bearer-token pairing is intentionally not implemented until Phase 2/4;
-  do not expose this foundation build beyond a trusted development machine.
+- No browser-controlled VLC command strings, arbitrary URLs, shell execution,
+  or AppleScript exist.
+- Automatic token persistence and QR pairing are intentionally deferred to
+  Phase 4; do not expose an unpaired build beyond a trusted development machine.
 - The intended Version 1 threat model is a trusted home/private network. Plain
   local HTTP does not protect against a malicious network administrator.
 

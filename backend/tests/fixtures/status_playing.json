@@ -1,0 +1,17 @@
+{
+  "state": "playing",
+  "time": 3724,
+  "length": 7210,
+  "position": 0.516504854368932,
+  "volume": 179,
+  "rate": 1.25,
+  "mute": false,
+  "information": {
+    "category": {
+      "meta": {
+        "title": "Example Film",
+        "filename": "example-film.mkv"
+      }
+    }
+  }
+}

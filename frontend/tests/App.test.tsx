@@ -4,31 +4,41 @@ import { describe, expect, it } from "vitest";
 import App from "../src/App";
 
 describe("application shell", () => {
-  it("renders the Phase 1 connection and media state", () => {
+  it("renders the secured Phase 2 connection and honest VLC state", () => {
     render(<App />);
 
     expect(
-      screen.getByRole("heading", { name: "Your Mac, within reach." })
+      screen.getByRole("heading", { name: "Ready when VLC is." })
     ).toBeInTheDocument();
-    expect(screen.getByText("Remote service ready")).toBeInTheDocument();
-    expect(screen.getByText("VLC connection not configured")).toBeInTheDocument();
+    expect(screen.getByText("Backend secured")).toBeInTheDocument();
+    expect(screen.getByText("VLC setup paused")).toBeInTheDocument();
+    expect(screen.getByText("Phase 2 API ready")).toBeInTheDocument();
   });
 
-  it("keeps playback preview controls semantic and unavailable", () => {
+  it("keeps every preview control semantic and unavailable", () => {
     render(<App />);
 
     expect(
-      screen.getByRole("button", { name: "Play — unavailable" })
+      screen.getByRole("button", { name: "Play — VLC unavailable" })
     ).toBeDisabled();
     expect(
       screen.getByRole("button", {
-        name: "Skip backward 10 seconds — unavailable"
+        name: "Skip backward 10 seconds — VLC unavailable"
       })
     ).toBeDisabled();
     expect(
       screen.getByRole("button", {
-        name: "Skip forward 10 seconds — unavailable"
+        name: "Skip forward 10 seconds — VLC unavailable"
       })
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Mute — VLC unavailable" })
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Volume up — unavailable" })
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Playback speed — VLC unavailable" })
     ).toBeDisabled();
   });
 });
