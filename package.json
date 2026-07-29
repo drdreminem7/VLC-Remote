@@ -1,6 +1,6 @@
 {
   "name": "mac-vlc-remote",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "private": true,
   "type": "module",
   "license": "MIT",
@@ -12,8 +12,9 @@
     "dev": "vite --config frontend/vite.config.ts",
     "build": "vite build --config frontend/vite.config.ts",
     "lint": "eslint frontend",
-    "typecheck": "tsc --build frontend/tsconfig.json",
+    "typecheck": "tsc --build frontend/tsconfig.json && tsc --noEmit --project tsconfig.e2e.json",
     "test": "vitest run --config frontend/vite.config.ts",
+    "test:e2e": "playwright test",
     "test:watch": "vitest --config frontend/vite.config.ts"
   },
   "dependencies": {
@@ -24,6 +25,7 @@
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
+    "@playwright/test": "1.62.0",
     "@testing-library/jest-dom": "7.0.0",
     "@testing-library/react": "16.3.2",
     "@testing-library/user-event": "14.6.1",

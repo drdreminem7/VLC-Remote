@@ -73,13 +73,13 @@ accurate.
 
 ## Phase 5 — end-to-end coverage and documentation
 
-- [ ] Add mocked-backend Playwright tests at an iPhone-like viewport.
-- [ ] Cover pairing, commands, timeline, auth failure, loss, and recovery.
-- [ ] Complete architecture, setup, security, testing, troubleshooting, and
+- [x] Add mocked-backend Playwright tests at an iPhone-like viewport.
+- [x] Cover pairing, commands, timeline, auth failure, loss, and recovery.
+- [x] Complete architecture, setup, security, testing, troubleshooting, and
   manual-check documentation.
-- [ ] Complete the README.
-- [ ] Run every repository check and production build.
-- [ ] Clearly separate automated, local-browser, and real-VLC verification.
+- [x] Complete the README.
+- [x] Run every repository check and production build.
+- [x] Clearly separate automated, local-browser, and real-VLC verification.
 
 ## Phase 6 — optional LaunchAgent
 

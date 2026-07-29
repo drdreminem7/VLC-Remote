@@ -172,12 +172,33 @@ configuration. `.env.example` contains placeholders only.
 ## Testing and compatibility
 
 Automated tests do not require VLC. Live VLC HTTP behavior remains pending
-until a safe configuration can keep this VLC build open with a localhost-only
-listener and user-controlled media is loaded.
+until user-controlled media is loaded for state-changing checks. The safe
+loopback status path is verified; playback commands remain manual work.
+
+Run the automated checks with:
+
+```bash
+make format
+make lint
+make typecheck
+make test
+make e2e
+make build
+```
+
+The E2E suite uses a mocked backend at an iPhone-like viewport. It does not
+claim real VLC playback behavior. See the manual checklist before relying on
+any live control beyond the verified status path.
 
 - [Implementation specification](SPEC.md)
 - [VLC compatibility evidence](docs/VLC_COMPATIBILITY.md)
 - [Pairing and startup](docs/PAIRING_AND_STARTUP.md)
+- [VLC setup](docs/VLC_SETUP.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Security](docs/SECURITY.md)
+- [Testing](docs/TESTING.md)
+- [Troubleshooting](docs/TROUBLESHOOTING.md)
+- [Manual test checklist](docs/MANUAL_TEST_CHECKLIST.md)
 - [Implementation checklist](docs/IMPLEMENTATION_CHECKLIST.md)
 
 ## License

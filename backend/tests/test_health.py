@@ -18,7 +18,7 @@ async def test_health_is_public_and_contains_no_secrets(tmp_path: Path) -> None:
 
     assert response.status_code == 200
     assert response.json() == {
-        "backend": {"status": "online", "version": "0.4.0"},
+        "backend": {"status": "online", "version": "0.5.0"},
         "vlc": {
             "status": "not_configured",
             "reachable": False,
