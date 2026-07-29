@@ -323,19 +323,23 @@ svg {
 }
 
 .touch-surface__artwork {
+    --artwork-top-clearance: clamp(6.75rem, 29%, 8rem);
+    --artwork-bottom-clearance: clamp(4.25rem, 21%, 5.75rem);
     position: absolute;
     z-index: 0;
-    top: 50%;
+    top: var(--artwork-top-clearance);
+    bottom: var(--artwork-bottom-clearance);
     left: 50%;
-    width: clamp(5rem, 28%, 8rem);
+    width: auto;
+    max-width: calc(100% - (var(--space-lg) * 2));
     aspect-ratio: 2 / 3;
     overflow: hidden;
     border: 1px solid color-mix(in oklch, var(--ink) 18%, transparent);
     border-radius: var(--radius-md);
     background: var(--surface-raised);
     box-shadow: 0 1rem 2rem var(--shadow-contact);
-    opacity: 0.78;
-    transform: translate(-50%, -50%);
+    opacity: 0.9;
+    transform: translateX(-50%);
 }
 
 .touch-surface__artwork::after {
