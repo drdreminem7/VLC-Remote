@@ -1,0 +1,71 @@
+#!/usr/bin/env python3
+"""Start the on-demand menu-bar remote without emitting a pairing URL."""
+
+from __future__ import annotations
+
+import os
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
+
+def fail(message: str) -> int:
+    print(message, file=sys.stderr)
+    return 1
+
+
+def run_checked(command: list[str], *, description: str) -> int:
+    completed = subprocess.run(command, cwd=PROJECT_ROOT, check=False)
+    if completed.returncode != 0:
+        return fail(f"{description} failed. See the menu-bar launcher log for details.")
+    return 0
+
+
+def main() -> int:
+    python = PROJECT_ROOT / ".venv" / "bin" / "python"
+    launcher = PROJECT_ROOT / "scripts" / "launch_vlc_http.py"
+    if not python.is_file():
+        return fail("Dependencies are missing. Run 'make bootstrap' first.")
+    if not (PROJECT_ROOT / "node_modules").is_dir():
+        return fail("Frontend dependencies are missing. Run 'make bootstrap' first.")
+    if shutil.which("npm") is None:
+        return fail("npm was not found. Run 'make bootstrap' after installing Node.js.")
+
+    if run_checked([str(python), str(launcher)], description="VLC launch") != 0:
+        return 1
+    if run_checked(["npm", "run", "build"], description="Frontend build") != 0:
+        return 1
+
+    allowed_hosts = subprocess.run(
+        [str(python), "scripts/show_pairing_qr.py", "--print-allowed-hosts"],
+        cwd=PROJECT_ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if allowed_hosts.returncode != 0 or not allowed_hosts.stdout.strip():
+        return fail("Could not determine trusted local addresses for the remote.")
+
+    environment = os.environ.copy()
+    environment["VLC_REMOTE_ALLOWED_HOSTS"] = allowed_hosts.stdout.strip()
+    os.execve(
+        str(python),
+        [
+            str(python),
+            "-m",
+            "uvicorn",
+            "backend.app.main:app",
+            "--host",
+            "0.0.0.0",
+            "--port",
+            "8000",
+        ],
+        environment,
+    )
+
+
+if __name__ == "__main__":
+    sys.exit(main())

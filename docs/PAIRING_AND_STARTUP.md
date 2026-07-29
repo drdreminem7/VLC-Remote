@@ -21,6 +21,18 @@ this Mac:
 It deliberately does not enable VLC's saved **Web** or **Lua interpreter**
 preferences, because that configuration made VLC 3.0.23 exit at launch.
 
+## On-demand menu-bar start
+
+Run `make menu-bar` to build and open the optional native Mac launcher. It asks
+for the project folder once, then adds a small Remote icon to the menu bar.
+Choose **Start Remote** to perform the same safe VLC launch and start the phone
+service; it displays a native QR window when the service is ready. It does not
+install a Login Item or LaunchAgent, and it never starts by itself.
+
+**Stop Phone Remote** stops FastAPI while leaving VLC playing. The app keeps its
+start/build diagnostics in `~/Library/Logs/MacVlcRemote/menu-bar-service.log`
+with mode `0600`; it does not log the pairing link or either secret.
+
 ## Pairing secret handling
 
 The first pairing operation creates a bearer token at:

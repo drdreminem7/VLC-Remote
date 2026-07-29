@@ -22,10 +22,16 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--host", help="specific hostname or local IP to use")
     parser.add_argument("--port", type=int, default=8000, help="remote service port")
-    parser.add_argument(
+    output_group = parser.add_mutually_exclusive_group()
+    output_group.add_argument(
         "--print-allowed-hosts",
         action="store_true",
         help="print a comma-separated trusted-host list without creating a token",
+    )
+    output_group.add_argument(
+        "--print-primary-url",
+        action="store_true",
+        help="print the first pairing URL for a trusted local launcher",
     )
     return parser.parse_args()
 
@@ -39,6 +45,10 @@ def main() -> int:
     token = Settings().get_access_token().get_secret_value()
     hosts = [arguments.host] if arguments.host else discover_pairing_hosts()
     urls = [pairing_url(host=host, port=arguments.port, token=token) for host in hosts]
+
+    if arguments.print_primary_url:
+        print(urls[0])
+        return 0
 
     print("Scan this QR code on a phone connected to the same home network:")
     qr = qrcode.QRCode(error_correction=qrcode.constants.ERROR_CORRECT_M, border=1)

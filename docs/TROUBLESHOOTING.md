@@ -35,6 +35,15 @@ Confirm both devices are on the same private Wi-Fi, disable any VPN that blocks
 local LAN traffic, and try the printed private IP rather than the `.local` name.
 Never open port 8000 to the public internet.
 
+## Menu-bar launcher does not start
+
+Build it with `make menu-bar`, then choose the project folder that contains the
+repository `Makefile` and `.venv` directory. If **Start Remote** reports that
+VLC is already running, quit VLC and retry: the launcher deliberately refuses
+to change a normal VLC instance's saved settings. The service log is at
+`~/Library/Logs/MacVlcRemote/menu-bar-service.log`; it contains start/build
+diagnostics but not pairing links or passwords.
+
 ## UI does not update after deployment
 
 Close and reopen the web app. The service worker updates the static shell on

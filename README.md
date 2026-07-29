@@ -57,6 +57,25 @@ make run
 This builds the frontend into FastAPI's static directory and serves the UI and
 API together at `http://127.0.0.1:8000`.
 
+## Mac menu-bar launcher
+
+For an on-demand, click-to-start version instead of terminals, build and open
+the native launcher:
+
+```bash
+make menu-bar
+```
+
+On its first launch, choose this project folder. A small remote icon appears in
+the Mac menu bar. Choose **Start Remote** and it will safely start the existing
+loopback-only VLC helper, build the UI, start the phone service, and open a
+native QR-code window. There is no login item, LaunchAgent, or automatic start.
+
+Use **Stop Phone Remote** when finished; it stops the phone service but leaves
+VLC playing. Quit the menu-bar app to ensure the remote stops. The app is built
+at `dist/Mac VLC Remote.app`; you may move it to Applications, but if the
+project is moved later, choose its new folder from the app menu.
+
 ## Phase 2 API
 
 `GET /api/v1/health` remains public and contains no secrets. Every status or
@@ -150,6 +169,8 @@ explicit state-changing mode.
 | `make typecheck` | Run mypy and TypeScript checks |
 | `make test` | Run backend and frontend unit tests |
 | `make run` | Build and run the same-origin production-style service |
+| `make menu-bar-build` | Build the native macOS menu-bar launcher |
+| `make menu-bar` | Build and open the on-demand menu-bar launcher |
 
 ## Security status
 

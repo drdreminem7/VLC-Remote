@@ -25,6 +25,9 @@ VLC HTTP interface on 127.0.0.1:8080
 - `backend/app/services/secret_store.py` owns current-user secret files.
 - `scripts/launch_vlc_http.py` explicitly starts VLC with the verified
   loopback-only HTTP override; it does not change VLC preferences.
+- `macos/MenuBarLauncher.swift` is an optional native, on-demand controller. It
+  runs only fixed local scripts from a user-selected project folder, writes
+  service output to a private user log, and renders the pairing QR locally.
 
 ## Runtime flow
 
@@ -32,6 +35,12 @@ VLC HTTP interface on 127.0.0.1:8080
 pairing URL/QR, and runs FastAPI on one origin. The phone loads the app from the
 Mac, then polls `/api/v1/status` with the stored bearer token. FastAPI maps each
 fixed request to a typed VLC operation and returns normalized state.
+
+`make menu-bar` builds an optional `Mac VLC Remote.app`. It never starts at
+login. Its **Start Remote** action invokes `scripts/run_menu_bar_service.py`,
+which runs the same safe VLC helper, then builds and starts FastAPI without
+printing the pairing URL to a terminal or service log. The native app receives
+the URL through a private child-process pipe and displays its QR in a Mac window.
 
 ## PWA behavior
 

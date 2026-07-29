@@ -3,7 +3,8 @@ RUFF := .venv/bin/ruff
 MYPY := .venv/bin/mypy
 PYTEST := .venv/bin/pytest
 
-.PHONY: bootstrap dev build format lint typecheck test e2e run pairing vlc-http
+.PHONY: bootstrap dev build format lint typecheck test e2e run pairing vlc-http \
+	menu-bar-build menu-bar
 
 bootstrap:
 	./scripts/bootstrap.sh
@@ -41,3 +42,9 @@ pairing:
 
 vlc-http:
 	$(PYTHON) scripts/launch_vlc_http.py
+
+menu-bar-build:
+	./scripts/build_menu_bar_launcher.sh
+
+menu-bar: menu-bar-build
+	open "dist/Mac VLC Remote.app"
