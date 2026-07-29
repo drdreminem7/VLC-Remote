@@ -52,7 +52,7 @@ class PlaybackTime(PlaybackModel):
 
 
 class AudioStatus(PlaybackModel):
-    volume_percent: int = Field(ge=0, le=100)
+    volume_percent: int = Field(ge=0, le=200)
     muted: bool
 
 

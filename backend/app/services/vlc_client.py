@@ -14,6 +14,7 @@ from backend.app.errors import (
 )
 from backend.app.models.playback import VlcStatus
 from backend.app.services.vlc_parser import parse_vlc_status
+from backend.app.services.vlc_volume import visible_percent_to_raw_volume
 
 
 class VlcClientProtocol(Protocol):
@@ -245,7 +246,7 @@ class HttpxVlcClient:
         return await self._request_status(
             command="volume",
             value_name="val",
-            value=f"{percent}%",
+            value=str(visible_percent_to_raw_volume(percent)),
         )
 
     async def set_muted(self, muted: bool) -> VlcStatus:

@@ -224,7 +224,7 @@ export default function App() {
       return;
     }
     adjustingVolumeRef.current = true;
-    const initialValue = clamp(status?.audio.volumePercent ?? 0, 0, 100);
+    const initialValue = clamp(status?.audio.volumePercent ?? 0, 0, 200);
     volumePreviewRef.current = initialValue;
     setVolumePreview(initialValue);
   };
@@ -327,7 +327,6 @@ export default function App() {
             type="button"
           >
             <RewindIcon />
-            <span aria-hidden="true">10</span>
           </button>
           <button
             aria-busy={remote.pendingAction === "toggle"}
@@ -347,7 +346,6 @@ export default function App() {
             type="button"
           >
             <ForwardIcon />
-            <span aria-hidden="true">10</span>
           </button>
         </section>
 
@@ -373,7 +371,7 @@ export default function App() {
               className="range-input range-input--volume"
               disabled={!canAdjustVolume}
               id="volume-control"
-              max="100"
+              max="200"
               min="0"
               onBlur={commitVolume}
               onChange={(event) => {

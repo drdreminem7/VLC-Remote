@@ -47,6 +47,17 @@ describe("remote API client", () => {
     expect(options?.body).toBe('{"mode":"relative","seconds":-10}');
   });
 
+  it("sends VLC's visible 0–200 volume scale unchanged to the API", async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify(status), { status: 200 })
+    );
+    const api = createRemoteApi(TOKEN, fetchMock);
+
+    await api.setVolume(180);
+
+    expect(fetchMock.mock.calls[0]?.[1]?.body).toBe('{"percent":180}');
+  });
+
   it("converts the standard server error into a safe typed error", async () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
       new Response(

@@ -16,7 +16,7 @@ as verified unless it completed on the real Mac and VLC instance.
 ## Playback commands
 
 - [ ] Play and pause.
-- [ ] Seek ±10 and ±30 seconds.
+- [ ] Seek ±10 seconds.
 - [ ] Drag the timeline and confirm a single final seek.
 - [ ] Change volume, mute, and restore volume.
 - [ ] Change playback rate.

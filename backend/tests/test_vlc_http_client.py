@@ -37,6 +37,7 @@ async def test_client_uses_basic_auth_and_url_encoded_fixed_parameters() -> None
     try:
         await client.seek_relative(-10)
         await client.set_volume(70)
+        await client.set_volume(200)
         await client.set_rate(1.25)
     finally:
         await client.aclose()
@@ -45,10 +46,12 @@ async def test_client_uses_basic_auth_and_url_encoded_fixed_parameters() -> None
         "/requests/status.json",
         "/requests/status.json",
         "/requests/status.json",
+        "/requests/status.json",
     ]
     assert dict(requests[0].url.params) == {"command": "seek", "val": "-10S"}
-    assert dict(requests[1].url.params) == {"command": "volume", "val": "70%"}
-    assert dict(requests[2].url.params) == {"command": "rate", "val": "1.25"}
+    assert dict(requests[1].url.params) == {"command": "volume", "val": "179"}
+    assert dict(requests[2].url.params) == {"command": "volume", "val": "512"}
+    assert dict(requests[3].url.params) == {"command": "rate", "val": "1.25"}
     assert requests[0].headers["Authorization"].startswith("Basic ")
     assert "server-only-secret" not in str(requests[0].url)
 
@@ -121,6 +124,6 @@ async def test_mute_fallback_restores_the_previous_nonzero_volume() -> None:
 
     assert [dict(request.url.params) for request in requests] == [
         {},
-        {"command": "volume", "val": "0%"},
-        {"command": "volume", "val": "70%"},
+        {"command": "volume", "val": "0"},
+        {"command": "volume", "val": "179"},
     ]

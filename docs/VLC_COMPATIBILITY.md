@@ -58,15 +58,16 @@ does not mean manually verified.
 | Previous / next | `command=pl_previous` / `pl_next` | Documented; unverified |
 | Relative seek | `command=seek&val=-10S` or `+10S` | Documented; unverified |
 | Absolute seek | `command=seek&val=1800` | Documented; unverified |
-| Volume | `command=volume&val=70%` | Documented; unverified |
+| Volume | `command=volume&val=<raw 0–512>` | Documented; mapping verified from bundled web UI source |
 | Playback rate | `command=rate&val=1.25` | Documented; unverified |
 | Audio track | `command=audio_track&val=<stream-number>` | Documented; unverified |
 | Subtitle track | `command=subtitle_track&val=<stream-number>` | Documented; unverified |
 | Fullscreen toggle | `command=fullscreen` | Documented; unverified |
 
-The bundled web client converts raw VLC volume values using 256 as nominal
-100% for its textual display. Phase 2 must confirm the actual response range
-before finalizing the backend's percentage conversion.
+The bundled web client exposes a 0–200% visible volume range. It converts a
+raw VLC status value with `raw / 2.56`, and sends a raw command value with
+`visiblePercent * 2.56`. The remote uses that same conversion internally while
+the phone and API use VLC's visible 0–200% scale.
 
 ## Safe status probe
 

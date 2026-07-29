@@ -69,7 +69,7 @@ async def test_fixed_playback_and_audio_commands_return_updated_status() -> None
             ("POST", "/api/v1/playback/toggle", None),
             ("POST", "/api/v1/playback/seek", {"mode": "relative", "seconds": -10}),
             ("POST", "/api/v1/playback/seek", {"mode": "absolute", "seconds": 900}),
-            ("POST", "/api/v1/audio/volume", {"percent": 72}),
+            ("POST", "/api/v1/audio/volume", {"percent": 200}),
             ("POST", "/api/v1/audio/mute", {"muted": True}),
             ("POST", "/api/v1/playback/rate", {"rate": 1.25}),
             ("POST", "/api/v1/playback/stop", None),
@@ -91,7 +91,7 @@ async def test_fixed_playback_and_audio_commands_return_updated_status() -> None
         ("toggle_playback", None),
         ("seek_relative", -10),
         ("seek_absolute", 900),
-        ("set_volume", 72),
+        ("set_volume", 200),
         ("set_muted", True),
         ("set_rate", 1.25),
         ("stop", None),
@@ -116,7 +116,7 @@ async def test_invalid_command_values_use_standard_error_shape() -> None:
         invalid_volume = await client.post(
             "/api/v1/audio/volume",
             headers=authorization(),
-            json={"percent": 101},
+            json={"percent": 201},
         )
 
     for response in (string_seek, huge_seek, invalid_volume):

@@ -12,6 +12,7 @@ from backend.app.models.playback import (
     PlaybackTime,
     VlcStatus,
 )
+from backend.app.services.vlc_volume import raw_volume_to_visible_percent
 
 _KNOWN_STATES = {
     "playing": PlaybackState.PLAYING,
@@ -83,7 +84,7 @@ def parse_vlc_status(raw: Mapping[str, object]) -> VlcStatus:
 
     raw_volume = _number(raw.get("volume"))
     volume_percent = (
-        min(100, max(0, round(raw_volume / 256 * 100))) if raw_volume is not None else 0
+        raw_volume_to_visible_percent(raw_volume) if raw_volume is not None else 0
     )
     raw_muted = raw.get("mute")
     muted = raw_muted if isinstance(raw_muted, bool) else volume_percent == 0

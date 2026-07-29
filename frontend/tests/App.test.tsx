@@ -80,6 +80,7 @@ describe("mobile remote", () => {
     expect(screen.getByRole("button", { name: "Play playback" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "Skip backward 10 seconds" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "Skip forward 10 seconds" })).toBeEnabled();
+    expect(screen.getByLabelText(/Volume68%/)).toHaveAttribute("max", "200");
     expect(screen.queryByText("moonrise.mkv")).not.toBeInTheDocument();
     expect(screen.queryByText("Local API protected")).not.toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledWith(

@@ -49,6 +49,15 @@ def test_empty_media_fixture_uses_conservative_defaults() -> None:
     assert status.audio.muted is True
 
 
+def test_vlc_maximum_raw_volume_maps_to_200_percent() -> None:
+    raw = load_fixture("status_playing.json")
+    raw["volume"] = 512
+
+    status = parse_vlc_status(raw)
+
+    assert status.audio.volume_percent == 200
+
+
 def test_empty_payload_is_rejected() -> None:
     with pytest.raises(VlcCommandFailed):
         parse_vlc_status({})

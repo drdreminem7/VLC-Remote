@@ -26,7 +26,7 @@ SeekRequest = Annotated[
 
 
 class VolumeRequest(CommandModel):
-    percent: Annotated[StrictInt, Field(ge=0, le=100)]
+    percent: Annotated[StrictInt, Field(ge=0, le=200)]
 
 
 class MuteRequest(CommandModel):
