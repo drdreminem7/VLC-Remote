@@ -485,8 +485,8 @@ svg {
 
 .utility-controls {
   display: grid;
-  grid-template-columns: minmax(2.75rem, 0.65fr) minmax(10.25rem, 2.55fr) minmax(3.125rem, 0.75fr);
-  align-items: stretch;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
   gap: var(--space-xs);
   user-select: none;
   animation: enter var(--duration-enter) 190ms var(--ease-out-expo) both;
@@ -502,8 +502,10 @@ svg {
 
 .utility-button {
   display: grid;
+  grid-column: 1;
   min-width: 2.75rem;
   min-height: 3rem;
+  justify-self: end;
   place-items: center;
   gap: 0.125rem;
   border-radius: var(--radius-md);
@@ -521,6 +523,7 @@ svg {
 
 .volume-control {
   display: grid;
+  grid-column: 2;
   grid-template-columns: 3.5rem minmax(2.5rem, 1fr) 3.5rem;
   min-height: 3.5rem;
   align-items: center;
@@ -528,6 +531,7 @@ svg {
   padding: 0;
   border-radius: var(--radius-md);
   border-color: transparent;
+  justify-self: center;
 }
 
 .volume-stepper__button {
@@ -574,6 +578,15 @@ svg {
   color: var(--ink-muted);
 }
 
+.volume-readout svg {
+  width: 1.5rem;
+  fill: none;
+  stroke: currentcolor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.65;
+}
+
 .volume-readout strong {
   color: var(--ink);
   font-family: var(--font-display);
@@ -585,12 +598,14 @@ svg {
 
 .speed-control {
   display: grid;
+  grid-column: 3;
   min-width: 3.125rem;
   min-height: 3rem;
   place-items: center;
   gap: 0;
   padding: 0.25rem;
   border-radius: var(--radius-md);
+  justify-self: start;
 }
 
 .speed-control select,
@@ -888,7 +903,7 @@ svg {
   }
 
   .utility-controls {
-    grid-template-columns: minmax(2.75rem, 0.65fr) minmax(9.5rem, 2.55fr) minmax(3.125rem, 0.75fr);
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
     gap: var(--space-xs);
   }
 

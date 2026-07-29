@@ -73,6 +73,15 @@ function StopIcon() {
   );
 }
 
+function VolumeIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <path d="M4.5 10v4h3l4 3.5v-11l-4 3.5h-3Z" />
+      <path d="M15 9.25a4.25 4.25 0 0 1 0 5.5M17.5 6.75a7.75 7.75 0 0 1 0 10.5" />
+    </svg>
+  );
+}
+
 function MinusIcon() {
   return (
     <svg aria-hidden="true" viewBox="0 0 24 24">
@@ -384,6 +393,7 @@ export default function App() {
               <MinusIcon />
             </button>
             <div aria-live="polite" className="volume-readout">
+              <VolumeIcon />
               <strong>{displayedVolume}</strong>
             </div>
             <button

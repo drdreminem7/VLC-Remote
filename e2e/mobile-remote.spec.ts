@@ -66,6 +66,16 @@ test("pairs from a fragment and forgets the Mac", async ({ page }) => {
       () => document.scrollingElement?.scrollHeight === window.innerHeight
     )
   ).toBe(true);
+  const pauseButton = await page.getByRole("button", { name: "Play playback" }).boundingBox();
+  const volumeControls = await page.getByRole("group", { name: "Volume 68 of 200" }).boundingBox();
+  expect(pauseButton).not.toBeNull();
+  expect(volumeControls).not.toBeNull();
+  expect(
+    Math.abs(
+      (pauseButton!.x + pauseButton!.width / 2) -
+        (volumeControls!.x + volumeControls!.width / 2)
+    )
+  ).toBeLessThan(1);
   await page.getByRole("button", { name: "Open remote settings" }).click();
   await expect(page.getByRole("dialog", { name: "Remote settings" })).toBeVisible();
   await page.getByRole("button", { name: "Forget this Mac" }).click();
