@@ -114,6 +114,33 @@ describe("mobile remote", () => {
     ]);
   });
 
+  it("keeps controls active while a command is being confirmed", async () => {
+    window.localStorage.setItem("mac-vlc-remote.access-token.v1", TOKEN);
+    let resolveCommand: ((value: Response) => void) | undefined;
+    const commandResponse = new Promise<Response>((resolve) => {
+      resolveCommand = resolve;
+    });
+    const playingStatus = { ...pausedStatus, state: "playing" };
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(response(pausedStatus))
+      .mockReturnValueOnce(commandResponse)
+      .mockResolvedValueOnce(response(playingStatus));
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<App />);
+    const playButton = await screen.findByRole("button", { name: "Play playback" });
+    fireEvent.click(playButton);
+
+    await waitFor(() => expect(playButton).toHaveAttribute("aria-busy", "true"));
+    expect(screen.getByRole("button", { name: "Skip backward 10 seconds" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Skip forward 10 seconds" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Mute audio" })).toBeEnabled();
+
+    resolveCommand?.(response(playingStatus));
+    await waitFor(() => expect(playButton).toHaveAttribute("aria-busy", "false"));
+  });
+
   it("previews timeline movement and only seeks when the control is released", async () => {
     window.localStorage.setItem("mac-vlc-remote.access-token.v1", TOKEN);
     const fetchMock = pairedFetch();

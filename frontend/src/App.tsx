@@ -153,7 +153,7 @@ export default function App() {
 
   const status = remote.status;
   const isConnected = remote.connection === "online" && status !== null;
-  const controlsEnabled = isConnected && remote.pendingAction === null;
+  const controlsEnabled = isConnected;
   const duration = status?.time.durationSeconds ?? null;
   const canSeek = controlsEnabled && status?.capabilities.seek === true && duration !== null && duration > 0;
   const canAdjustVolume = controlsEnabled && status?.capabilities.volume === true;
@@ -322,7 +322,7 @@ export default function App() {
           <button
             aria-label="Skip backward 10 seconds"
             className="round-button round-button--secondary transport__skip transport__skip--back"
-            disabled={!controlsEnabled || remote.pendingAction === "seek"}
+            disabled={!controlsEnabled}
             onClick={() => void remote.seekRelative(-10)}
             type="button"
           >
@@ -341,7 +341,7 @@ export default function App() {
           <button
             aria-label="Skip forward 10 seconds"
             className="round-button round-button--secondary transport__skip transport__skip--forward"
-            disabled={!controlsEnabled || remote.pendingAction === "seek"}
+            disabled={!controlsEnabled}
             onClick={() => void remote.seekRelative(10)}
             type="button"
           >
