@@ -574,10 +574,6 @@ svg {
   color: var(--ink-muted);
 }
 
-.volume-readout svg {
-  width: 1.5rem;
-}
-
 .volume-readout strong {
   color: var(--ink);
   font-family: var(--font-display);
