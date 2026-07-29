@@ -35,14 +35,10 @@ async def require_access_token(
 ) -> None:
     """Reject missing or invalid tokens using a constant-time comparison."""
 
-    configured_token = settings.vlc_remote_access_token
+    configured_token = settings.get_access_token()
     provided_token = credentials.credentials if credentials is not None else ""
-    expected_token = (
-        configured_token.get_secret_value()
-        if configured_token is not None
-        else "\0" * 32
-    )
-    valid = configured_token is not None and compare_digest(
+    expected_token = configured_token.get_secret_value()
+    valid = compare_digest(
         provided_token.encode(),
         expected_token.encode(),
     )

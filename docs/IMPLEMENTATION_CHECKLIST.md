@@ -15,7 +15,7 @@ accurate.
 - [x] Record incompatibilities, unknowns, and required capability gates.
 - [x] Reproduce and document the VLC 3.0.23 Web/Lua launch incompatibility,
   then restore normal VLC startup.
-- [ ] Run a live authenticated status check after the VLC HTTP interface is
+- [x] Run a live authenticated status check after the VLC HTTP interface is
   safely configured without breaking normal startup.
 - [ ] Run state-changing compatibility checks with user-controlled media and
   explicit consent.
@@ -61,15 +61,15 @@ accurate.
 
 ## Phase 4 — pairing, startup, and PWA
 
-- [ ] Generate and persist at least 32 random bytes for the access token.
-- [ ] Restrict token-file permissions to the current user.
-- [ ] Generate fragment-based pairing URLs and terminal QR codes.
-- [ ] Add local hostname/IP discovery.
-- [ ] Implement `make bootstrap` and `make run`.
-- [ ] Serve the production frontend and API from FastAPI on one origin.
-- [ ] Add manifest, icons, service worker, and safe cache versioning.
-- [ ] Ensure service workers never cache API command responses.
-- [ ] Verify production startup and pairing behaviour locally.
+- [x] Generate and persist at least 32 random bytes for the access token.
+- [x] Restrict token-file permissions to the current user.
+- [x] Generate fragment-based pairing URLs and terminal QR codes.
+- [x] Add local hostname/IP discovery.
+- [x] Implement `make bootstrap` and `make run`.
+- [x] Serve the production frontend and API from FastAPI on one origin.
+- [x] Add manifest, icons, service worker, and safe cache versioning.
+- [x] Ensure service workers never cache API command responses.
+- [x] Verify production startup and pairing behaviour locally.
 
 ## Phase 5 — end-to-end coverage and documentation
 

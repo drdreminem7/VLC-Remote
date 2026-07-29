@@ -17,9 +17,9 @@ Phone browser / installed PWA
 ```
 
 > [!NOTE]
-> Phase 3 provides the authenticated, responsive mobile remote. It works against
-> the normalized API using mocked tests; generating a real pairing URL and PWA
-> installation arrive in Phase 4.
+> Phase 4 provides secure local pairing, terminal QR output, and an installable
+> PWA shell. The live VLC launch method is verified for read-only status; media
+> commands still require user-controlled compatibility testing.
 
 ## Requirements
 
@@ -35,12 +35,18 @@ Node.js 22.14.0, and npm 10.9.2.
 
 ```bash
 make bootstrap
-make dev
+make vlc-http
+make run
 ```
 
-Open `http://127.0.0.1:5173` for the Vite development UI. Its `/api` requests
-are proxied to FastAPI at `http://127.0.0.1:8000`, so development does not need
-permissive CORS.
+Before `make vlc-http`, quit any normally launched VLC instance. This explicit
+helper starts a new VLC process with the proven loopback-only HTTP override; it
+does not modify the broken Web/Lua preference. `make run` displays the pairing
+QR code. Scan it from a phone on the same home network.
+
+For frontend development without live VLC, use `make dev` and open
+`http://127.0.0.1:5173`. Its `/api` requests are proxied to FastAPI at
+`http://127.0.0.1:8000`, so development does not need permissive CORS.
 
 Run the production-style same-origin build with:
 
@@ -60,9 +66,9 @@ control endpoint requires:
 Authorization: Bearer <VLC_REMOTE_ACCESS_TOKEN>
 ```
 
-Set a random access token containing at least 32 characters before testing the
-protected API. An empty token safely rejects every protected request; persistent
-token generation and QR pairing are reserved for Phase 4.
+An empty `VLC_REMOTE_ACCESS_TOKEN` causes a 32-byte token to be generated in
+the current user's protected Application Support directory when pairing or a
+protected endpoint is first used. Do not set a weaker token manually.
 
 The exposed control surface is intentionally fixed:
 
@@ -86,9 +92,9 @@ phone, unavailable VLC, and unreachable Mac.
 Pairing URLs use a token in the fragment, for example
 `http://mac.local:8000/#token=<token>`. The UI validates and stores a valid
 token for this origin, then immediately removes the fragment with
-`history.replaceState` so it is not left in the visible address bar. **Phase 4
-will generate those URLs and tokens.** Until then, this behavior is covered by
-mocked frontend tests; do not hand-author or share an access token.
+`history.replaceState` so it is not left in the visible address bar. `make run`
+prints a terminal QR code and `make pairing` shows it again without restarting
+the service. Do not hand-author, share, or screenshot a pairing URL.
 
 Use the settings button to select **Forget this Mac** and remove the token from
 this browser. The UI always renders only the controls advertised by the backend
@@ -155,9 +161,8 @@ explicit state-changing mode.
   or AppleScript exist.
 - A valid pairing token is kept only in this origin's browser local storage and
   is removed on “Forget this Mac”; the fragment is cleared before the UI polls.
-- Secure token generation, permissions, pairing links, and QR codes are
-  intentionally deferred to Phase 4; do not expose an unpaired build beyond a
-  trusted development machine.
+- The generated token lives in `~/Library/Application Support/MacVlcRemote`
+  with directory mode `0700` and file mode `0600`.
 - The intended Version 1 threat model is a trusted home/private network. Plain
   local HTTP does not protect against a malicious network administrator.
 
@@ -172,6 +177,7 @@ listener and user-controlled media is loaded.
 
 - [Implementation specification](SPEC.md)
 - [VLC compatibility evidence](docs/VLC_COMPATIBILITY.md)
+- [Pairing and startup](docs/PAIRING_AND_STARTUP.md)
 - [Implementation checklist](docs/IMPLEMENTATION_CHECKLIST.md)
 
 ## License

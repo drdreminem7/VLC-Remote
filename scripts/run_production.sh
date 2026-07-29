@@ -11,13 +11,17 @@ fi
 
 npm run build
 
-remote_host=${VLC_REMOTE_HOST:-127.0.0.1}
+remote_host=${VLC_REMOTE_HOST:-0.0.0.0}
 remote_port=${VLC_REMOTE_PORT:-8000}
 
-echo "Serving the UI and API together at http://${remote_host}:${remote_port}"
-echo "Phase 2 enforces bearer authentication on status and control endpoints."
-echo "If VLC_REMOTE_ACCESS_TOKEN is empty, protected requests are safely rejected."
-echo "Live VLC control remains disabled until a safe VLC configuration is verified."
+if [ -z "${VLC_REMOTE_ALLOWED_HOSTS:-}" ]; then
+  VLC_REMOTE_ALLOWED_HOSTS="$(.venv/bin/python scripts/show_pairing_qr.py --print-allowed-hosts)"
+  export VLC_REMOTE_ALLOWED_HOSTS
+fi
+
+echo "Serving the UI and API together on port ${remote_port}."
+echo "Use 'make vlc-http' first if VLC has not been launched with its local HTTP override."
+.venv/bin/python scripts/show_pairing_qr.py --port "$remote_port"
 
 exec .venv/bin/python -m uvicorn backend.app.main:app \
   --host "$remote_host" \

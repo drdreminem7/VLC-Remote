@@ -147,7 +147,7 @@ class HttpxVlcClient:
 
     @classmethod
     def from_settings(cls, settings: Settings) -> "HttpxVlcClient":
-        password = settings.vlc_http_password
+        password = settings.get_vlc_http_password()
         if password is None:
             raise ValueError("VLC_HTTP_PASSWORD is required to configure VLC")
         return cls(

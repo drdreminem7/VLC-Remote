@@ -9,6 +9,7 @@ export default tseslint.config(
     ignores: [
       "backend/app/static/**",
       "frontend/coverage/**",
+      "frontend/public/**",
       "node_modules/**"
     ]
   },

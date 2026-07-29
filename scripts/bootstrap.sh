@@ -29,5 +29,6 @@ npm install
 
 echo
 echo "Bootstrap complete."
-echo "Run 'make dev' for development or 'make run' for a same-origin build."
-echo "VLC preferences were not changed."
+echo "Run 'make dev' for development or 'make run' for the same-origin remote."
+echo "For live VLC control, quit VLC, run 'make vlc-http', then run 'make run'."
+echo "The VLC helper uses a loopback-only command-line override and never changes VLC preferences."

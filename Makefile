@@ -3,7 +3,7 @@ RUFF := .venv/bin/ruff
 MYPY := .venv/bin/mypy
 PYTEST := .venv/bin/pytest
 
-.PHONY: bootstrap dev build format lint typecheck test run
+.PHONY: bootstrap dev build format lint typecheck test run pairing vlc-http
 
 bootstrap:
 	./scripts/bootstrap.sh
@@ -23,7 +23,7 @@ lint:
 	npm run lint
 
 typecheck:
-	$(MYPY) backend scripts/check_vlc.py
+	$(MYPY) backend scripts
 	npm run typecheck
 
 test:
@@ -32,3 +32,9 @@ test:
 
 run:
 	./scripts/run_production.sh
+
+pairing:
+	$(PYTHON) scripts/show_pairing_qr.py
+
+vlc-http:
+	$(PYTHON) scripts/launch_vlc_http.py

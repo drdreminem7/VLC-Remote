@@ -2,12 +2,16 @@
 
 ## Verification status
 
-Live VLC HTTP verification is **blocked on a safe launch configuration**. VLC
-is installed, but its HTTP interface was not listening during Phase 0 and
-neither `VLC_HTTP_BASE_URL` nor `VLC_HTTP_PASSWORD` was configured in the
-shell. On 2026-07-29, enabling **Web** in the installed VLC 3.0.23 preferences
-caused subsequent normal launches to exit immediately. No playback command has
-been claimed as successfully tested.
+Live VLC HTTP status verification is available through a safe, temporary
+command-line launch override. On 2026-07-29, a separate VLC 3.0.23 instance
+was started with `--extraintf=http`, `--http-host=127.0.0.1`, and a one-time
+password. It listened on `127.0.0.1:8080` and successfully returned an
+authenticated, read-only status response. The test instance was then stopped.
+
+Normal VLC preferences remain unsuitable for this feature: enabling **Web** in
+the installed VLC 3.0.23 preferences caused normal launches to exit. The remote
+therefore uses the command-line override and never turns on the Web preference.
+No state-changing playback command has been claimed as successfully tested.
 
 This document separates facts observed from the installed application from
 behaviour that still needs a live VLC session.
@@ -93,8 +97,9 @@ On 2026-07-29, the following behavior was reproduced on the installed build:
 6. VLC then opened normally without a command-line override and remained
    running. Nothing was listening on TCP port 8080.
 
-Until a different launch configuration is verified, do not enable **Web** or
-**Lua interpreter** on this installation.
+Do not enable **Web** or **Lua interpreter** in saved VLC preferences on this
+installation. Use `make vlc-http` to launch VLC with the verified temporary
+override instead.
 
 To recover if VLC starts exiting immediately:
 
@@ -112,9 +117,8 @@ To recover if VLC starts exiting immediately:
 
 ## Diagnostic harness
 
-Do not enable the HTTP interface solely to run this diagnostic on the current
-VLC installation. After a safe configuration is found, run the default,
-non-destructive status check with:
+After starting VLC through `make vlc-http`, run the default, non-destructive
+status check with:
 
 ```bash
 VLC_HTTP_BASE_URL=http://127.0.0.1:8080 \
@@ -160,9 +164,9 @@ is acceptable. The integration suite stops playback at the end.
 - Mute is not listed as a deterministic HTTP command in the installed interface
   documentation. The planned backend process-state fallback remains necessary
   unless live testing establishes a better mechanism.
-- The current GUI Web/Lua configuration prevents VLC from remaining open. The
-  default port is closed, so Phase 2 should be built and tested with mocked
-  responses before any live verification.
+- The current GUI Web/Lua configuration prevents VLC from remaining open.
+  `make vlc-http` bypasses that setting with a process-only override, so it must
+  be used whenever live control is needed.
 
 ## Live verification record
 
@@ -171,7 +175,8 @@ Fill this section only after successful real-VLC checks.
 | Date | VLC version | Media type | Command | Exact request shape | Relevant response fields | Result / limitation |
 | --- | --- | --- | --- | --- | --- | --- |
 | 2026-07-29 | 3.0.23 | None | Launch with Web enabled | N/A | N/A | VLC exited; setting reverted |
-| Pending | 3.0.23 | User-controlled test media | Status | `/requests/status.json` | Pending | Not run |
+| 2026-07-29 | 3.0.23 | None | Status | `GET /requests/status.json`, HTTP Basic auth with empty username, loopback only | `state=stopped`, `time=0/0`, `version=3.0.23 Vetinari`, `apiversion=3` | Passed with temporary `--extraintf=http` launch; no state change |
+| Pending | 3.0.23 | User-controlled test media | Playback commands | Pending | Pending | Requires explicit media-test consent |
 
 Redacted fixture files derived from a real response must be reviewed before
 being copied into `backend/tests/fixtures`; the temporary diagnostics directory

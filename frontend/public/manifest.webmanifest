@@ -1,0 +1,17 @@
+{
+  "name": "Mac VLC Remote",
+  "short_name": "VLC Remote",
+  "description": "A secure, local remote for VLC on your Mac.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#181715",
+  "theme_color": "#181715",
+  "icons": [
+    {
+      "src": "/icons/remote.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

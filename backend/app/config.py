@@ -4,8 +4,14 @@ from functools import lru_cache
 from typing import Literal
 from urllib.parse import urlsplit
 
-from pydantic import AnyHttpUrl, Field, SecretStr, field_validator
+from pydantic import AnyHttpUrl, Field, PrivateAttr, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from backend.app.services.secret_store import (
+    SecretStoreError,
+    load_or_create_access_token,
+    load_vlc_http_password,
+)
 
 
 class Settings(BaseSettings):
@@ -25,6 +31,7 @@ class Settings(BaseSettings):
     vlc_remote_log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
     vlc_remote_allowed_hosts: str = "localhost,127.0.0.1"
     vlc_remote_enable_discovery: bool = True
+    _generated_access_token: SecretStr | None = PrivateAttr(default=None)
 
     @field_validator("vlc_http_password", "vlc_remote_access_token", mode="before")
     @classmethod
@@ -85,7 +92,31 @@ class Settings(BaseSettings):
     def vlc_is_configured(self) -> bool:
         """Whether enough secret material exists to construct the VLC client."""
 
-        return self.vlc_http_password is not None
+        return self.get_vlc_http_password() is not None
+
+    def get_access_token(self) -> SecretStr:
+        """Return the configured token or create the protected local token file."""
+
+        if self.vlc_remote_access_token is not None:
+            return self.vlc_remote_access_token
+        if self._generated_access_token is not None:
+            return self._generated_access_token
+        try:
+            self._generated_access_token = SecretStr(load_or_create_access_token())
+        except SecretStoreError as exc:
+            raise ValueError("Could not load the local remote access token.") from exc
+        return self._generated_access_token
+
+    def get_vlc_http_password(self) -> SecretStr | None:
+        """Read an explicit environment password or the launch-helper password."""
+
+        if self.vlc_http_password is not None:
+            return self.vlc_http_password
+        try:
+            password = load_vlc_http_password()
+        except SecretStoreError as exc:
+            raise ValueError("Could not load the local VLC HTTP password.") from exc
+        return SecretStr(password) if password else None
 
 
 @lru_cache
