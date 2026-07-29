@@ -421,7 +421,7 @@ svg {
   align-items: center;
   justify-content: center;
   justify-items: center;
-  gap: var(--space-xs);
+  gap: var(--space-sm);
   padding-inline: 0;
   user-select: none;
   animation: enter var(--duration-enter) 130ms var(--ease-out-expo) both;
