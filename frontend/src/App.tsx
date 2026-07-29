@@ -1,3 +1,11 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+
+import { useRemote } from "./hooks/useRemote";
+import type { ConnectionState, VlcStatus } from "./types";
+import { clamp, formatDuration } from "./utils/time";
+
+const DEFAULT_RATES = [0.5, 0.75, 1, 1.25, 1.5, 2];
+
 function StatusDot() {
   return <span className="status-dot" aria-hidden="true" />;
 }
@@ -45,20 +53,27 @@ function PlayIcon() {
   );
 }
 
-function VolumeDownIcon() {
+function PauseIcon() {
   return (
     <svg aria-hidden="true" viewBox="0 0 24 24">
-      <path d="M5 10v4h3l4 3.5v-11L8 10H5Z" />
-      <path d="M15.5 9.5a4 4 0 0 1 0 5" />
+      <path d="M7 5.5h3.5v13H7v-13Zm6.5 0H17v13h-3.5v-13Z" />
     </svg>
   );
 }
 
-function VolumeUpIcon() {
+function StopIcon() {
   return (
     <svg aria-hidden="true" viewBox="0 0 24 24">
-      <path d="M4 10v4h3l4 3.5v-11L7 10H4Z" />
-      <path d="M14 9a4.5 4.5 0 0 1 0 6M16.5 6.5a8 8 0 0 1 0 11" />
+      <rect x="6.5" y="6.5" width="11" height="11" rx="1.5" />
+    </svg>
+  );
+}
+
+function VolumeIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <path d="M4.5 10v4h3l4 3.5v-11l-4 3.5h-3Z" />
+      <path d="M15 9.25a4.25 4.25 0 0 1 0 5.5M17.5 6.75a7.75 7.75 0 0 1 0 10.5" />
     </svg>
   );
 }
@@ -66,7 +81,7 @@ function VolumeUpIcon() {
 function MuteIcon() {
   return (
     <svg aria-hidden="true" viewBox="0 0 24 24">
-      <path d="M5 10v4h3l4 3.5v-11L8 10H5Z" />
+      <path d="M4.5 10v4h3l4 3.5v-11l-4 3.5h-3Z" />
       <path d="m16 10 4 4m0-4-4 4" />
     </svg>
   );
@@ -82,9 +97,147 @@ function SpeedIcon() {
   );
 }
 
+function connectionLabel(connection: ConnectionState): string {
+  switch (connection) {
+    case "online":
+      return "Connected";
+    case "connecting":
+      return "Connecting";
+    case "vlc-unavailable":
+      return "VLC unavailable";
+    case "unauthenticated":
+      return "Pair this phone";
+    case "offline":
+      return "Phone offline";
+    case "server-error":
+      return "Mac unavailable";
+  }
+}
+
+function mediaHeading(status: VlcStatus | null, connection: ConnectionState): string {
+  if (status?.media.title) {
+    return status.media.title;
+  }
+  if (status?.media.filename) {
+    return status.media.filename;
+  }
+  if (connection === "unauthenticated") {
+    return "Pair this phone.";
+  }
+  if (connection === "vlc-unavailable") {
+    return "VLC is unavailable.";
+  }
+  if (connection === "offline") {
+    return "You’re offline.";
+  }
+  return "Waiting for your Mac.";
+}
+
+function mediaDescription(status: VlcStatus | null, connection: ConnectionState): string {
+  if (status?.media.filename && status.media.filename !== status.media.title) {
+    return status.media.filename;
+  }
+  if (status !== null) {
+    return status.state === "playing" ? "Playing now" : "Ready to play";
+  }
+  if (connection === "unauthenticated") {
+    return "Open the pairing link from your Mac to connect this phone.";
+  }
+  if (connection === "vlc-unavailable") {
+    return "VLC’s local control interface is not responding on this Mac.";
+  }
+  return "The remote will reconnect automatically when the Mac is available.";
+}
+
 export default function App() {
+  const remote = useRemote();
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [seekPreview, setSeekPreview] = useState<number | null>(null);
+  const [volumePreview, setVolumePreview] = useState<number | null>(null);
+  const seekingRef = useRef(false);
+  const seekPreviewRef = useRef<number | null>(null);
+  const adjustingVolumeRef = useRef(false);
+  const volumePreviewRef = useRef<number | null>(null);
+
+  const status = remote.status;
+  const isConnected = remote.connection === "online" && status !== null;
+  const controlsEnabled = isConnected && remote.pendingAction === null;
+  const duration = status?.time.durationSeconds ?? null;
+  const canSeek = controlsEnabled && status?.capabilities.seek === true && duration !== null && duration > 0;
+  const canAdjustVolume = controlsEnabled && status?.capabilities.volume === true;
+  const canAdjustRate = controlsEnabled && status?.capabilities.rate === true;
+  const currentElapsed = status?.time.elapsedSeconds ?? 0;
+  const displayedElapsed = seekPreview ?? currentElapsed;
+  const displayedVolume = volumePreview ?? status?.audio.volumePercent ?? 0;
+  const playbackRates = useMemo(
+    () =>
+      Array.from(new Set([...DEFAULT_RATES, status?.playbackRate ?? 1])).sort(
+        (first, second) => first - second
+      ),
+    [status?.playbackRate]
+  );
+
+  useEffect(() => {
+    if (!seekingRef.current) {
+      setSeekPreview(null);
+      seekPreviewRef.current = null;
+    }
+  }, [status?.time.elapsedSeconds]);
+
+  useEffect(() => {
+    if (!adjustingVolumeRef.current) {
+      setVolumePreview(null);
+      volumePreviewRef.current = null;
+    }
+  }, [status?.audio.volumePercent]);
+
+  const beginSeeking = () => {
+    if (!canSeek) {
+      return;
+    }
+    seekingRef.current = true;
+    const initialValue = clamp(currentElapsed, 0, duration ?? 0);
+    seekPreviewRef.current = initialValue;
+    setSeekPreview(initialValue);
+  };
+
+  const commitSeek = () => {
+    if (!seekingRef.current || seekPreviewRef.current === null) {
+      return;
+    }
+    const target = seekPreviewRef.current;
+    seekingRef.current = false;
+    seekPreviewRef.current = null;
+    setSeekPreview(null);
+    void remote.seekAbsolute(target);
+  };
+
+  const beginVolumeAdjustment = () => {
+    if (!canAdjustVolume) {
+      return;
+    }
+    adjustingVolumeRef.current = true;
+    const initialValue = clamp(status?.audio.volumePercent ?? 0, 0, 100);
+    volumePreviewRef.current = initialValue;
+    setVolumePreview(initialValue);
+  };
+
+  const commitVolume = () => {
+    if (!adjustingVolumeRef.current || volumePreviewRef.current === null) {
+      return;
+    }
+    const target = volumePreviewRef.current;
+    adjustingVolumeRef.current = false;
+    volumePreviewRef.current = null;
+    setVolumePreview(null);
+    void remote.setVolume(target);
+  };
+
+  const isPlaying = status?.state === "playing";
+  const primaryLabel = isPlaying ? "Pause playback" : "Play playback";
+
   return (
-    <main className="experience">
+    <main className="experience" id="main-content">
       <section className="remote" aria-label="Mac VLC remote">
         <header className="remote-header">
           <div className="device">
@@ -95,139 +248,296 @@ export default function App() {
               <strong>Living room Mac</strong>
               <span>
                 <StatusDot />
-                Backend secured
+                {connectionLabel(remote.connection)}
               </span>
             </span>
           </div>
 
           <button
+            aria-controls="remote-settings"
+            aria-expanded={settingsOpen}
             className="icon-button"
+            onClick={() => setSettingsOpen((open) => !open)}
             type="button"
-            disabled
-            aria-label="Open remote settings — available in a later phase"
           >
             <SettingsIcon />
+            <span className="sr-only">Open remote settings</span>
           </button>
         </header>
+
+        <div
+          className={`connection-banner connection-banner--${remote.connection}`}
+          role={remote.connection === "online" ? "status" : "alert"}
+        >
+          <StatusDot />
+          <span>{remote.message}</span>
+        </div>
 
         <section className="touch-surface" aria-labelledby="media-title">
           <div className="touch-surface__texture" aria-hidden="true" />
           <div className="touch-surface__content">
-            <p className="eyebrow">VLC setup paused</p>
-            <h1 id="media-title">Ready when VLC is.</h1>
+            <p className="eyebrow">
+              {status === null ? connectionLabel(remote.connection) : status.state}
+            </p>
+            <h1 id="media-title">{mediaHeading(status, remote.connection)}</h1>
             <p className="touch-surface__message">
-              Live control stays off until VLC can run safely.
+              {mediaDescription(status, remote.connection)}
             </p>
 
             <span className="security-chip">
               <LockIcon />
-              Local API protected
+              {remote.token === null ? "Pairing required" : "Local API protected"}
             </span>
           </div>
 
-          <div
-            className="timeline"
-            role="group"
-            aria-label="Playback timeline unavailable"
-          >
-            <div className="timeline__track" aria-hidden="true">
-              <span />
-            </div>
+          <div className="timeline" aria-label="Playback timeline">
+            <label className="sr-only" htmlFor="seek-timeline">
+              Seek to {formatDuration(displayedElapsed)}
+            </label>
+            <input
+              aria-valuetext={`${formatDuration(displayedElapsed)} of ${formatDuration(duration)}`}
+              className="range-input range-input--timeline"
+              disabled={!canSeek}
+              id="seek-timeline"
+              max={duration ?? 1}
+              min="0"
+              onBlur={commitSeek}
+              onChange={(event) => {
+                const value = Number(event.currentTarget.value);
+                seekingRef.current = true;
+                seekPreviewRef.current = value;
+                setSeekPreview(value);
+              }}
+              onKeyUp={commitSeek}
+              onPointerDown={beginSeeking}
+              onPointerUp={commitSeek}
+              step="1"
+              type="range"
+              value={clamp(displayedElapsed, 0, duration ?? 1)}
+            />
             <div className="timeline__labels">
-              <time>00:00</time>
-              <span>Waiting for VLC</span>
-              <time>--:--</time>
+              <time>{formatDuration(displayedElapsed)}</time>
+              <span>{status === null ? "Waiting for VLC" : status.state}</span>
+              <time>{formatDuration(duration)}</time>
             </div>
           </div>
         </section>
 
         <section className="transport" aria-label="Playback controls">
           <button
-            className="round-button round-button--secondary"
+            className="round-button round-button--secondary transport__skip transport__skip--far-back"
+            disabled={!controlsEnabled || remote.pendingAction === "seek"}
+            onClick={() => void remote.seekRelative(-30)}
             type="button"
-            disabled
-            aria-label="Skip backward 10 seconds — VLC unavailable"
+          >
+            <RewindIcon />
+            <span>30</span>
+            <span className="sr-only">Skip backward 30 seconds</span>
+          </button>
+          <button
+            className="round-button round-button--secondary transport__skip transport__skip--back"
+            disabled={!controlsEnabled || remote.pendingAction === "seek"}
+            onClick={() => void remote.seekRelative(-10)}
+            type="button"
           >
             <RewindIcon />
             <span>10</span>
+            <span className="sr-only">Skip backward 10 seconds</span>
           </button>
-
           <button
+            aria-busy={remote.pendingAction === "toggle"}
+            aria-label={primaryLabel}
             className="round-button round-button--primary"
+            disabled={!controlsEnabled}
+            onClick={() => void remote.togglePlayback()}
             type="button"
-            disabled
-            aria-label="Play — VLC unavailable"
           >
-            <PlayIcon />
+            {isPlaying ? <PauseIcon /> : <PlayIcon />}
           </button>
-
           <button
-            className="round-button round-button--secondary"
+            className="round-button round-button--secondary transport__skip transport__skip--forward"
+            disabled={!controlsEnabled || remote.pendingAction === "seek"}
+            onClick={() => void remote.seekRelative(10)}
             type="button"
-            disabled
-            aria-label="Skip forward 10 seconds — VLC unavailable"
           >
             <ForwardIcon />
             <span>10</span>
+            <span className="sr-only">Skip forward 10 seconds</span>
+          </button>
+          <button
+            className="round-button round-button--secondary transport__skip transport__skip--far-forward"
+            disabled={!controlsEnabled || remote.pendingAction === "seek"}
+            onClick={() => void remote.seekRelative(30)}
+            type="button"
+          >
+            <ForwardIcon />
+            <span>30</span>
+            <span className="sr-only">Skip forward 30 seconds</span>
           </button>
         </section>
 
-        <section className="utility-controls" aria-label="Audio controls">
+        <section className="utility-controls" aria-label="Audio and speed controls">
           <button
+            aria-label={status?.audio.muted ? "Unmute audio" : "Mute audio"}
             className="utility-button"
+            disabled={!canAdjustVolume}
+            onClick={() => void remote.setMuted(!(status?.audio.muted ?? false))}
             type="button"
-            disabled
-            aria-label="Mute — VLC unavailable"
           >
             <MuteIcon />
-            <span>Mute</span>
+            <span>{status?.audio.muted ? "Unmute" : "Mute"}</span>
           </button>
 
-          <div className="volume-rocker" role="group" aria-label="Volume">
-            <button type="button" disabled aria-label="Volume down — unavailable">
-              <VolumeDownIcon />
-            </button>
-            <span aria-hidden="true" />
-            <button type="button" disabled aria-label="Volume up — unavailable">
-              <VolumeUpIcon />
-            </button>
+          <div className="volume-control">
+            <label htmlFor="volume-control">
+              <VolumeIcon />
+              <span>Volume</span>
+              <span className="volume-value">{displayedVolume}%</span>
+            </label>
+            <input
+              className="range-input range-input--volume"
+              disabled={!canAdjustVolume}
+              id="volume-control"
+              max="100"
+              min="0"
+              onBlur={commitVolume}
+              onChange={(event) => {
+                const value = Number(event.currentTarget.value);
+                adjustingVolumeRef.current = true;
+                volumePreviewRef.current = value;
+                setVolumePreview(value);
+              }}
+              onKeyUp={commitVolume}
+              onPointerDown={beginVolumeAdjustment}
+              onPointerUp={commitVolume}
+              step="1"
+              type="range"
+              value={displayedVolume}
+            />
           </div>
 
-          <button
-            className="utility-button"
-            type="button"
-            disabled
-            aria-label="Playback speed — VLC unavailable"
-          >
+          <label className="speed-control" htmlFor="rate-control">
             <SpeedIcon />
             <span>Speed</span>
-          </button>
+            <select
+              disabled={!canAdjustRate}
+              id="rate-control"
+              onChange={(event) => void remote.setRate(Number(event.currentTarget.value))}
+              value={status?.playbackRate ?? 1}
+            >
+              {playbackRates.map((rate) => (
+                <option key={rate} value={rate}>
+                  {rate}×
+                </option>
+              ))}
+            </select>
+          </label>
+        </section>
+
+        {status?.capabilities.playlistNavigation ? (
+          <section className="advanced-controls" aria-label="Playlist controls">
+            <button disabled={!controlsEnabled} onClick={() => void remote.previousItem()} type="button">
+              Previous item
+            </button>
+            <button disabled={!controlsEnabled} onClick={() => void remote.nextItem()} type="button">
+              Next item
+            </button>
+          </section>
+        ) : null}
+
+        {status?.capabilities.audioTrackSelection || status?.capabilities.subtitleTrackSelection ? (
+          <section className="track-controls" aria-label="Available tracks">
+            {status.capabilities.audioTrackSelection ? (
+              <label>
+                Audio track
+                <select
+                  disabled={!controlsEnabled}
+                  onChange={(event) => void remote.selectAudioTrack(event.currentTarget.value)}
+                  value={status.tracks.audio.find((track) => track.selected)?.id ?? ""}
+                >
+                  {status.tracks.audio.map((track) => (
+                    <option key={track.id} value={track.id}>
+                      {track.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
+            {status.capabilities.subtitleTrackSelection ? (
+              <label>
+                Subtitles
+                <select
+                  disabled={!controlsEnabled}
+                  onChange={(event) => void remote.selectSubtitleTrack(event.currentTarget.value)}
+                  value={status.tracks.subtitles.find((track) => track.selected)?.id ?? ""}
+                >
+                  {status.tracks.subtitles.map((track) => (
+                    <option key={track.id} value={track.id}>
+                      {track.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
+          </section>
+        ) : null}
+
+        <section
+          aria-label="Remote settings"
+          className={`settings-panel${settingsOpen ? " settings-panel--open" : ""}`}
+          id="remote-settings"
+        >
+          <div className="settings-panel__inner">
+            <div>
+              <p className="eyebrow">Connection</p>
+              <p>
+                {remote.token === null
+                  ? "Open a new pairing link on your Mac to connect this phone."
+                  : "This phone has a local pairing token for this Mac."}
+              </p>
+            </div>
+            <button
+              className="text-button"
+              disabled={remote.token === null}
+              onClick={() => remote.forgetPairing()}
+              type="button"
+            >
+              Forget this Mac
+            </button>
+            <button
+              aria-label="Stop playback"
+              className="icon-stop-button"
+              disabled={!controlsEnabled}
+              onClick={() => void remote.stop()}
+              type="button"
+            >
+              <StopIcon />
+              Stop
+            </button>
+          </div>
         </section>
 
         <footer className="remote-footer" aria-live="polite">
           <span className="remote-footer__state">
             <StatusDot />
-            Phase 2 API ready
+            {connectionLabel(remote.connection)}
           </span>
-          <span>Live VLC paused for safety</span>
+          <span>{remote.pendingAction === null ? "Local control" : "Updating VLC…"}</span>
         </footer>
       </section>
 
       <aside className="room-note" aria-label="Remote status summary">
-        <p className="eyebrow">Mac VLC Remote / 02</p>
-        <h2>A quieter way to stay in the film.</h2>
-        <p>
-          The secure control layer is ready. Live VLC access remains disabled
-          while its Web interface is incompatible with this Mac.
-        </p>
+        <p className="eyebrow">Mac VLC Remote / 03</p>
+        <h2>Stay with the film, not the controls.</h2>
+        <p>{remote.message}</p>
         <dl>
           <div>
             <dt>Control layer</dt>
-            <dd>Authenticated</dd>
+            <dd>{remote.token === null ? "Pairing needed" : "Authenticated"}</dd>
           </div>
           <div>
             <dt>VLC link</dt>
-            <dd>Safely offline</dd>
+            <dd>{connectionLabel(remote.connection)}</dd>
           </div>
         </dl>
       </aside>

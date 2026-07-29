@@ -48,16 +48,16 @@ accurate.
 
 ## Phase 3 — mobile remote
 
-- [ ] Add the authenticated API client.
-- [ ] Extract pairing tokens from URL fragments and immediately clean the URL.
-- [ ] Add local pairing storage and “Forget this Mac”.
-- [ ] Add visibility-aware, abortable polling with failure backoff.
-- [ ] Render all required connection states and recovery guidance.
-- [ ] Add media, playback, seek, volume, mute, and speed controls.
-- [ ] Add seek preview with one command on release.
-- [ ] Gate track and playlist controls on backend capabilities.
-- [ ] Meet mobile touch, safe-area, keyboard, and accessibility requirements.
-- [ ] Add frontend unit tests and run all frontend checks.
+- [x] Add the authenticated API client.
+- [x] Extract pairing tokens from URL fragments and immediately clean the URL.
+- [x] Add local pairing storage and “Forget this Mac”.
+- [x] Add visibility-aware, abortable polling with failure backoff.
+- [x] Render all required connection states and recovery guidance.
+- [x] Add media, playback, seek, volume, mute, and speed controls.
+- [x] Add seek preview with one command on release.
+- [x] Gate track and playlist controls on backend capabilities.
+- [x] Meet mobile touch, safe-area, keyboard, and accessibility requirements.
+- [x] Add frontend unit tests and run all frontend checks.
 
 ## Phase 4 — pairing, startup, and PWA
 

@@ -17,9 +17,9 @@ Phone browser / installed PWA
 ```
 
 > [!NOTE]
-> Phase 2 provides the tested, authenticated VLC adapter and normalized API.
-> The interface previews the new tactile remote surface; live frontend polling,
-> pairing, and PWA installation arrive in the following phases.
+> Phase 3 provides the authenticated, responsive mobile remote. It works against
+> the normalized API using mocked tests; generating a real pairing URL and PWA
+> installation arrive in Phase 4.
 
 ## Requirements
 
@@ -74,6 +74,25 @@ The exposed control surface is intentionally fixed:
 No browser-provided VLC commands or URLs are accepted. Playlist, track, and
 fullscreen routes are absent because the installed VLC build has no successful
 live compatibility evidence for them.
+
+## Mobile remote
+
+The phone UI polls a paired Mac every 900 ms while visible and every 6 seconds
+while hidden. It aborts obsolete requests, stops sending commands while the
+phone is offline, and uses capped exponential retry delays when the service is
+unavailable. Its connection banner distinguishes an unpaired phone, offline
+phone, unavailable VLC, and unreachable Mac.
+
+Pairing URLs use a token in the fragment, for example
+`http://mac.local:8000/#token=<token>`. The UI validates and stores a valid
+token for this origin, then immediately removes the fragment with
+`history.replaceState` so it is not left in the visible address bar. **Phase 4
+will generate those URLs and tokens.** Until then, this behavior is covered by
+mocked frontend tests; do not hand-author or share an access token.
+
+Use the settings button to select **Forget this Mac** and remove the token from
+this browser. The UI always renders only the controls advertised by the backend
+capability flags, so unsupported playlist and track controls remain absent.
 
 ## VLC HTTP interface status
 
@@ -134,8 +153,11 @@ explicit state-changing mode.
 - Production does not configure wildcard CORS.
 - No browser-controlled VLC command strings, arbitrary URLs, shell execution,
   or AppleScript exist.
-- Automatic token persistence and QR pairing are intentionally deferred to
-  Phase 4; do not expose an unpaired build beyond a trusted development machine.
+- A valid pairing token is kept only in this origin's browser local storage and
+  is removed on “Forget this Mac”; the fragment is cleared before the UI polls.
+- Secure token generation, permissions, pairing links, and QR codes are
+  intentionally deferred to Phase 4; do not expose an unpaired build beyond a
+  trusted development machine.
 - The intended Version 1 threat model is a trusted home/private network. Plain
   local HTTP does not protect against a malicious network administrator.
 
