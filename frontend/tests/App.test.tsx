@@ -89,13 +89,12 @@ describe("mobile remote", () => {
     );
   });
 
-  it("sends one fixed toggle request and refreshes status after success", async () => {
+  it("sends one fixed toggle request and applies the returned status", async () => {
     window.localStorage.setItem("mac-vlc-remote.access-token.v1", TOKEN);
     const playingStatus = { ...pausedStatus, state: "playing" };
     const fetchMock = vi
       .fn<typeof fetch>()
       .mockResolvedValueOnce(response(pausedStatus))
-      .mockResolvedValueOnce(response(playingStatus))
       .mockResolvedValueOnce(response(playingStatus));
     vi.stubGlobal("fetch", fetchMock);
 
@@ -109,8 +108,7 @@ describe("mobile remote", () => {
     });
     expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
       "/api/v1/status",
-      "/api/v1/playback/toggle",
-      "/api/v1/status"
+      "/api/v1/playback/toggle"
     ]);
   });
 
@@ -124,8 +122,7 @@ describe("mobile remote", () => {
     const fetchMock = vi
       .fn<typeof fetch>()
       .mockResolvedValueOnce(response(pausedStatus))
-      .mockReturnValueOnce(commandResponse)
-      .mockResolvedValueOnce(response(playingStatus));
+      .mockReturnValueOnce(commandResponse);
     vi.stubGlobal("fetch", fetchMock);
 
     render(<App />);
@@ -139,6 +136,28 @@ describe("mobile remote", () => {
 
     resolveCommand?.(response(playingStatus));
     await waitFor(() => expect(playButton).toHaveAttribute("aria-busy", "false"));
+  });
+
+  it("keeps the command response instead of briefly restoring stale mute state", async () => {
+    window.localStorage.setItem("mac-vlc-remote.access-token.v1", TOKEN);
+    const mutedStatus = {
+      ...pausedStatus,
+      audio: { volumePercent: 0, muted: true }
+    };
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(response(pausedStatus))
+      .mockResolvedValueOnce(response(mutedStatus));
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<App />);
+    fireEvent.click(await screen.findByRole("button", { name: "Mute audio" }));
+
+    expect(await screen.findByRole("button", { name: "Unmute audio" })).toBeEnabled();
+    expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
+      "/api/v1/status",
+      "/api/v1/audio/mute"
+    ]);
   });
 
   it("rounds VLC's imprecise playback-rate response for the speed selector", async () => {

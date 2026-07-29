@@ -250,8 +250,6 @@ export function useRemote(): RemoteState {
       try {
         const nextStatus = await command(api, controller.signal);
         applyStatus(nextStatus);
-        const refreshedStatus = await api.getStatus(controller.signal);
-        applyStatus(refreshedStatus);
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") {
           return;
