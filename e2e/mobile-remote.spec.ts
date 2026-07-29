@@ -76,26 +76,34 @@ test("pairs from a fragment and forgets the Mac", async ({ page }) => {
     .boundingBox();
   const muteButton = await page.getByRole("button", { name: "Mute audio" }).boundingBox();
   const speedControl = await page.locator(".speed-control").boundingBox();
+  const touchSurface = await page.locator(".touch-surface").boundingBox();
   expect(pauseButton).not.toBeNull();
   expect(volumeControls).not.toBeNull();
   expect(previousButton).not.toBeNull();
   expect(nextButton).not.toBeNull();
   expect(muteButton).not.toBeNull();
   expect(speedControl).not.toBeNull();
+  expect(touchSurface).not.toBeNull();
   expect(
     Math.abs(
       (pauseButton!.x + pauseButton!.width / 2) -
         (volumeControls!.x + volumeControls!.width / 2)
     )
   ).toBeLessThan(1);
-  expect(Math.abs(previousButton!.x - muteButton!.x)).toBeLessThan(1);
+  expect(Math.abs(muteButton!.x - touchSurface!.x)).toBeLessThan(1);
   expect(
     Math.abs(
-      nextButton!.x + nextButton!.width - (speedControl!.x + speedControl!.width)
+      speedControl!.x + speedControl!.width - (touchSurface!.x + touchSurface!.width)
     )
   ).toBeLessThan(1);
   expect(Math.abs(muteButton!.width - speedControl!.width)).toBeLessThan(1);
   expect(Math.abs(muteButton!.height - speedControl!.height)).toBeLessThan(1);
+  expect(
+    Math.abs(
+      (pauseButton!.x + pauseButton!.width / 2) -
+        (previousButton!.x + previousButton!.width / 2)
+    )
+  ).toBeLessThan(100);
   await page.getByRole("button", { name: "Open remote settings" }).click();
   await expect(page.getByRole("dialog", { name: "Remote settings" })).toBeVisible();
   await page.getByRole("button", { name: "Forget this Mac" }).click();
