@@ -183,7 +183,8 @@ export default function App() {
 
   const status = remote.status;
   const mediaSource = status?.media.title || status?.media.filename || "";
-  const posterTitle = mediaSource ? movieTitle(mediaSource) : null;
+  const posterSource = status?.media.filename || status?.media.title || "";
+  const posterTitle = posterSource ? movieTitle(posterSource) : null;
   const hasMedia = mediaSource.length > 0;
   const isConnected = remote.connection === "online" && status !== null;
   const controlsEnabled = isConnected;

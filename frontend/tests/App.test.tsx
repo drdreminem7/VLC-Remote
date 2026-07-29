@@ -146,6 +146,31 @@ describe("mobile remote", () => {
     });
   });
 
+  it("prefers VLC's filename over noisy media metadata for poster lookup", async () => {
+    window.localStorage.setItem("mac-vlc-remote.access-token.v1", TOKEN);
+    const taggedStatus = {
+      ...pausedStatus,
+      media: {
+        title: "GalaxyRG265 - Eyes.Wide.Shut.1999.1080p.BluRay.x265",
+        filename: "Eyes.Wide.Shut.1999.1080p.BluRay.x265.mkv"
+      }
+    };
+    const fetchMock = remoteFetch(response(taggedStatus));
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(
+        fetchMock.mock.calls.some(([url]) =>
+          requestUrl(url).includes(
+            "title=Eyes.Wide.Shut.1999.1080p.BluRay.x265"
+          )
+        )
+      ).toBe(true);
+    });
+  });
+
   it("sends one fixed toggle request and applies the returned status", async () => {
     window.localStorage.setItem("mac-vlc-remote.access-token.v1", TOKEN);
     const playingStatus = { ...pausedStatus, state: "playing" };
