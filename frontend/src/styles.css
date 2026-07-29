@@ -342,6 +342,12 @@ svg {
     transform: translateX(-50%);
 }
 
+.touch-surface--with-artwork .touch-surface__artwork {
+    --artwork-top-clearance: clamp(3.5rem, 14%, 4.5rem);
+    --artwork-bottom-clearance: clamp(4.25rem, 21%, 5.75rem);
+    opacity: 0.96;
+}
+
 .touch-surface__artwork::after {
     position: absolute;
     inset: 0;

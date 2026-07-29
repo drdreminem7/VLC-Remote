@@ -115,9 +115,7 @@ describe("mobile remote", () => {
 
     expect(window.location.hash).toBe("");
     await waitFor(() => {
-      expect(
-        screen.getByRole("heading", { name: "Moonrise, Chapter Four" })
-      ).toBeInTheDocument();
+      expect(screen.getByRole("region", { name: "Current playback" })).toBeInTheDocument();
     });
     expect(screen.getByRole("status")).toHaveTextContent("Connected");
     expect(screen.getAllByText("Paused")).toHaveLength(1);
@@ -125,7 +123,7 @@ describe("mobile remote", () => {
     expect(screen.getByRole("button", { name: "Skip backward 10 seconds" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "Skip forward 10 seconds" })).toBeEnabled();
     expect(screen.getByRole("group", { name: "Volume 68 of 200" })).toBeInTheDocument();
-    expect(screen.queryByText("moonrise.mkv")).not.toBeInTheDocument();
+    expect(screen.queryByText("Moonrise, Chapter Four")).not.toBeInTheDocument();
     expect(screen.queryByText("Local API protected")).not.toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/v1/status",

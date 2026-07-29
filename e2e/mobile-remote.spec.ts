@@ -57,12 +57,8 @@ test("pairs from a fragment and forgets the Mac", async ({ page }) => {
   await page.goto(`/#token=${TOKEN}`);
 
   await expect(page).toHaveURL(/\/$/);
-  await expect(page.getByRole("heading", { name: "Moonrise, Chapter Four" })).toBeVisible();
-  expect(
-    await page
-      .getByRole("heading", { name: "Moonrise, Chapter Four" })
-      .evaluate((element) => getComputedStyle(element).whiteSpace)
-  ).toBe("nowrap");
+  await expect(page.getByRole("region", { name: "Current playback" })).toBeVisible();
+  await expect(page.getByText("Moonrise, Chapter Four")).toHaveCount(0);
   expect(await page.evaluate(() => getComputedStyle(document.documentElement).colorScheme)).toBe(
     "dark"
   );
@@ -211,7 +207,7 @@ test("recovers from a temporary backend failure", async ({ page }) => {
   await expect(
     page.getByText("VLC’s local control interface is not responding on this Mac.")
   ).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Moonrise, Chapter Four" })).toBeVisible({
+  await expect(page.getByRole("region", { name: "Current playback" })).toBeVisible({
     timeout: 4000
   });
 });

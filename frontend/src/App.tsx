@@ -146,13 +146,7 @@ function playbackStateLabel(state: VlcStatus["state"]): string {
   return state === "playing" ? "Playing" : "Paused";
 }
 
-function mediaHeading(status: VlcStatus | null, connection: ConnectionState): string {
-  if (status?.media.title) {
-    return movieTitle(status.media.title);
-  }
-  if (status?.media.filename) {
-    return movieTitle(status.media.filename);
-  }
+function mediaHeading(connection: ConnectionState): string {
   if (connection === "unauthenticated") {
     return "Pair this phone.";
   }
@@ -189,6 +183,7 @@ export default function App() {
   const status = remote.status;
   const mediaSource = status?.media.title || status?.media.filename || "";
   const posterTitle = mediaSource ? movieTitle(mediaSource) : null;
+  const hasMedia = mediaSource.length > 0;
   const isConnected = remote.connection === "online" && status !== null;
   const controlsEnabled = isConnected;
   const duration = status?.time.durationSeconds ?? null;
@@ -313,7 +308,10 @@ export default function App() {
           </button>
         </header>
 
-        <section className="touch-surface" aria-labelledby="media-title">
+        <section
+          aria-label={hasMedia ? "Current playback" : "Playback status"}
+          className={`touch-surface${posterUrl ? " touch-surface--with-artwork" : ""}`}
+        >
           <div className="touch-surface__texture" aria-hidden="true" />
           {posterUrl ? (
             <div className="touch-surface__artwork" aria-hidden="true">
@@ -331,7 +329,7 @@ export default function App() {
                 ? connectionLabel(remote.connection)
                 : playbackStateLabel(status.state)}
             </p>
-            <h1 id="media-title">{mediaHeading(status, remote.connection)}</h1>
+            {!hasMedia ? <h1>{mediaHeading(remote.connection)}</h1> : null}
             {description ? <p className="touch-surface__message">{description}</p> : null}
           </div>
 

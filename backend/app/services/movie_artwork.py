@@ -1,6 +1,7 @@
 """Best-effort movie poster lookup through TMDB with a Wikimedia fallback."""
 
 import base64
+import re
 from collections.abc import Mapping
 from typing import Protocol
 
@@ -10,6 +11,7 @@ TMDB_SEARCH_API = "https://api.themoviedb.org/3/search/movie"
 TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p/w500"
 WIKIMEDIA_API = "https://en.wikipedia.org/w/api.php"
 MAX_IMAGE_BYTES = 1_500_000
+YEAR_TOKEN = re.compile(r"(?<!\d)(?:19\d{2}|20\d{2})(?!\d)")
 
 
 class MovieArtworkLookupProtocol(Protocol):
@@ -27,6 +29,17 @@ def _normalize_title(value: str) -> str:
             for character in value.casefold()
         ).split()
     )
+
+
+def _tmdb_search_terms(title: str) -> tuple[str, str | None]:
+    """Extract a filename-style release year without damaging numbered titles."""
+
+    sanitized_title = re.sub(r"[._]+", " ", title).strip()
+    for match in reversed(tuple(YEAR_TOKEN.finditer(sanitized_title))):
+        candidate_title = sanitized_title[: match.start()].strip(" -–—()[]{}")
+        if _normalize_title(candidate_title):
+            return candidate_title, match.group(0)
+    return sanitized_title, None
 
 
 def _tmdb_poster_source(payload: object, query: str) -> str | None:
@@ -119,21 +132,25 @@ class MovieArtworkLookup:
     async def _tmdb_source(self, query: str) -> str | None:
         if not self._tmdb_api_token:
             return None
+        title, year = _tmdb_search_terms(query)
+        parameters = {
+            "query": title,
+            "include_adult": "false",
+            "language": "en-US",
+            "page": "1",
+        }
+        if year is not None:
+            parameters["year"] = year
         response = await self._client.get(
             TMDB_SEARCH_API,
-            params={
-                "query": query,
-                "include_adult": "false",
-                "language": "en-US",
-                "page": "1",
-            },
+            params=parameters,
             headers={
                 "Authorization": f"Bearer {self._tmdb_api_token}",
                 "Accept": "application/json",
             },
         )
         response.raise_for_status()
-        return _tmdb_poster_source(response.json(), query)
+        return _tmdb_poster_source(response.json(), title)
 
     async def _wikimedia_source(self, query: str) -> str | None:
         parameters = {
@@ -180,7 +197,8 @@ class MovieArtworkLookup:
             source = None
         if source is None:
             try:
-                source = await self._wikimedia_source(query)
+                fallback_title, _ = _tmdb_search_terms(query)
+                source = await self._wikimedia_source(fallback_title)
             except (httpx.HTTPError, ValueError, TypeError):
                 source = None
         if source is None:
