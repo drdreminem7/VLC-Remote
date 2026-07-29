@@ -76,8 +76,12 @@ describe("mobile remote", () => {
         screen.getByRole("heading", { name: "Moonrise, Chapter Four" })
       ).toBeInTheDocument();
     });
-    expect(screen.getByRole("status")).toHaveTextContent("Mac and VLC connected");
+    expect(screen.getByRole("status")).toHaveTextContent("Connected");
     expect(screen.getByRole("button", { name: "Play playback" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Skip backward 10 seconds" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Skip forward 10 seconds" })).toBeEnabled();
+    expect(screen.queryByText("moonrise.mkv")).not.toBeInTheDocument();
+    expect(screen.queryByText("Local API protected")).not.toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/v1/status",
       expect.objectContaining({ credentials: "same-origin" })
@@ -151,9 +155,10 @@ describe("mobile remote", () => {
 
     render(<App />);
 
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Remote service found, but VLC is not responding."
-    );
+    expect(await screen.findByRole("alert")).toHaveTextContent("VLC unavailable");
+    expect(
+      screen.getByText("VLC’s local control interface is not responding on this Mac.")
+    ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Play playback" })).toBeDisabled();
   });
 
@@ -193,11 +198,24 @@ describe("mobile remote", () => {
       name: "Open remote settings"
     });
     fireEvent.click(settingsButton);
+    expect(await screen.findByRole("dialog", { name: "Remote settings" })).toBeInTheDocument();
     fireEvent.click(await screen.findByRole("button", { name: "Forget this Mac" }));
 
     expect(
       await screen.findByRole("heading", { name: "Pair this phone." })
     ).toBeInTheDocument();
     expect(window.localStorage.getItem("mac-vlc-remote.access-token.v1")).toBeNull();
+  });
+
+  it("keeps secondary actions in a dismissible settings dialog", async () => {
+    window.localStorage.setItem("mac-vlc-remote.access-token.v1", TOKEN);
+    vi.stubGlobal("fetch", pairedFetch());
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Open remote settings" }));
+
+    expect(await screen.findByRole("button", { name: "Stop playback" })).toBeEnabled();
+    fireEvent.click(screen.getByRole("button", { name: "Close remote settings" }));
+    expect(screen.queryByRole("dialog", { name: "Remote settings" })).not.toBeInTheDocument();
   });
 });

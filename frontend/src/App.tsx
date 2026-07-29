@@ -10,12 +10,10 @@ function StatusDot() {
   return <span className="status-dot" aria-hidden="true" />;
 }
 
-function LockIcon() {
+function CloseIcon() {
   return (
     <svg aria-hidden="true" viewBox="0 0 24 24">
-      <path d="M7.75 10V7.75a4.25 4.25 0 0 1 8.5 0V10" />
-      <rect x="5.25" y="10" width="13.5" height="10" rx="3" />
-      <path d="M12 14.25v2.5" />
+      <path d="m6.75 6.75 10.5 10.5m0-10.5-10.5 10.5" />
     </svg>
   );
 }
@@ -118,9 +116,6 @@ function mediaHeading(status: VlcStatus | null, connection: ConnectionState): st
   if (status?.media.title) {
     return status.media.title;
   }
-  if (status?.media.filename) {
-    return status.media.filename;
-  }
   if (connection === "unauthenticated") {
     return "Pair this phone.";
   }
@@ -134,11 +129,8 @@ function mediaHeading(status: VlcStatus | null, connection: ConnectionState): st
 }
 
 function mediaDescription(status: VlcStatus | null, connection: ConnectionState): string {
-  if (status?.media.filename && status.media.filename !== status.media.title) {
-    return status.media.filename;
-  }
   if (status !== null) {
-    return status.state === "playing" ? "Playing now" : "Ready to play";
+    return status.state === "playing" ? "Playing" : "Paused";
   }
   if (connection === "unauthenticated") {
     return "Open the pairing link from your Mac to connect this phone.";
@@ -190,6 +182,21 @@ export default function App() {
       volumePreviewRef.current = null;
     }
   }, [status?.audio.volumePercent]);
+
+  useEffect(() => {
+    if (!settingsOpen) {
+      return undefined;
+    }
+
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setSettingsOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [settingsOpen]);
 
   const beginSeeking = () => {
     if (!canSeek) {
@@ -246,7 +253,10 @@ export default function App() {
             </span>
             <span className="device__copy">
               <strong>Living room Mac</strong>
-              <span>
+              <span
+                aria-live="polite"
+                role={remote.connection === "online" ? "status" : "alert"}
+              >
                 <StatusDot />
                 {connectionLabel(remote.connection)}
               </span>
@@ -265,14 +275,6 @@ export default function App() {
           </button>
         </header>
 
-        <div
-          className={`connection-banner connection-banner--${remote.connection}`}
-          role={remote.connection === "online" ? "status" : "alert"}
-        >
-          <StatusDot />
-          <span>{remote.message}</span>
-        </div>
-
         <section className="touch-surface" aria-labelledby="media-title">
           <div className="touch-surface__texture" aria-hidden="true" />
           <div className="touch-surface__content">
@@ -280,14 +282,7 @@ export default function App() {
               {status === null ? connectionLabel(remote.connection) : status.state}
             </p>
             <h1 id="media-title">{mediaHeading(status, remote.connection)}</h1>
-            <p className="touch-surface__message">
-              {mediaDescription(status, remote.connection)}
-            </p>
-
-            <span className="security-chip">
-              <LockIcon />
-              {remote.token === null ? "Pairing required" : "Local API protected"}
-            </span>
+            <p className="touch-surface__message">{mediaDescription(status, remote.connection)}</p>
           </div>
 
           <div className="timeline" aria-label="Playback timeline">
@@ -325,24 +320,14 @@ export default function App() {
 
         <section className="transport" aria-label="Playback controls">
           <button
-            className="round-button round-button--secondary transport__skip transport__skip--far-back"
-            disabled={!controlsEnabled || remote.pendingAction === "seek"}
-            onClick={() => void remote.seekRelative(-30)}
-            type="button"
-          >
-            <RewindIcon />
-            <span>30</span>
-            <span className="sr-only">Skip backward 30 seconds</span>
-          </button>
-          <button
+            aria-label="Skip backward 10 seconds"
             className="round-button round-button--secondary transport__skip transport__skip--back"
             disabled={!controlsEnabled || remote.pendingAction === "seek"}
             onClick={() => void remote.seekRelative(-10)}
             type="button"
           >
             <RewindIcon />
-            <span>10</span>
-            <span className="sr-only">Skip backward 10 seconds</span>
+            <span aria-hidden="true">10</span>
           </button>
           <button
             aria-busy={remote.pendingAction === "toggle"}
@@ -355,24 +340,14 @@ export default function App() {
             {isPlaying ? <PauseIcon /> : <PlayIcon />}
           </button>
           <button
+            aria-label="Skip forward 10 seconds"
             className="round-button round-button--secondary transport__skip transport__skip--forward"
             disabled={!controlsEnabled || remote.pendingAction === "seek"}
             onClick={() => void remote.seekRelative(10)}
             type="button"
           >
             <ForwardIcon />
-            <span>10</span>
-            <span className="sr-only">Skip forward 10 seconds</span>
-          </button>
-          <button
-            className="round-button round-button--secondary transport__skip transport__skip--far-forward"
-            disabled={!controlsEnabled || remote.pendingAction === "seek"}
-            onClick={() => void remote.seekRelative(30)}
-            type="button"
-          >
-            <ForwardIcon />
-            <span>30</span>
-            <span className="sr-only">Skip forward 30 seconds</span>
+            <span aria-hidden="true">10</span>
           </button>
         </section>
 
@@ -434,97 +409,106 @@ export default function App() {
           </label>
         </section>
 
-        {status?.capabilities.playlistNavigation ? (
-          <section className="advanced-controls" aria-label="Playlist controls">
-            <button disabled={!controlsEnabled} onClick={() => void remote.previousItem()} type="button">
-              Previous item
-            </button>
-            <button disabled={!controlsEnabled} onClick={() => void remote.nextItem()} type="button">
-              Next item
-            </button>
-          </section>
-        ) : null}
-
-        {status?.capabilities.audioTrackSelection || status?.capabilities.subtitleTrackSelection ? (
-          <section className="track-controls" aria-label="Available tracks">
-            {status.capabilities.audioTrackSelection ? (
-              <label>
-                Audio track
-                <select
-                  disabled={!controlsEnabled}
-                  onChange={(event) => void remote.selectAudioTrack(event.currentTarget.value)}
-                  value={status.tracks.audio.find((track) => track.selected)?.id ?? ""}
-                >
-                  {status.tracks.audio.map((track) => (
-                    <option key={track.id} value={track.id}>
-                      {track.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            ) : null}
-            {status.capabilities.subtitleTrackSelection ? (
-              <label>
-                Subtitles
-                <select
-                  disabled={!controlsEnabled}
-                  onChange={(event) => void remote.selectSubtitleTrack(event.currentTarget.value)}
-                  value={status.tracks.subtitles.find((track) => track.selected)?.id ?? ""}
-                >
-                  {status.tracks.subtitles.map((track) => (
-                    <option key={track.id} value={track.id}>
-                      {track.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            ) : null}
-          </section>
-        ) : null}
-
-        <section
-          aria-label="Remote settings"
-          className={`settings-panel${settingsOpen ? " settings-panel--open" : ""}`}
-          id="remote-settings"
-        >
-          <div className="settings-panel__inner">
-            <div>
-              <p className="eyebrow">Connection</p>
-              <p>
-                {remote.token === null
-                  ? "Open a new pairing link on your Mac to connect this phone."
-                  : "This phone has a local pairing token for this Mac."}
-              </p>
-            </div>
-            <button
-              className="text-button"
-              disabled={remote.token === null}
-              onClick={() => remote.forgetPairing()}
-              type="button"
-            >
-              Forget this Mac
-            </button>
-            <button
-              aria-label="Stop playback"
-              className="icon-stop-button"
-              disabled={!controlsEnabled}
-              onClick={() => void remote.stop()}
-              type="button"
-            >
-              <StopIcon />
-              Stop
-            </button>
-          </div>
-        </section>
-
-        <footer className="remote-footer" aria-live="polite">
-          <span className="remote-footer__state">
-            <StatusDot />
-            {connectionLabel(remote.connection)}
-          </span>
-          <span>{remote.pendingAction === null ? "Local control" : "Updating VLC…"}</span>
-        </footer>
       </section>
+
+      {settingsOpen ? (
+        <div className="settings-dialog" onMouseDown={() => setSettingsOpen(false)}>
+          <section
+            aria-label="Remote settings"
+            aria-modal="true"
+            className="settings-dialog__sheet"
+            id="remote-settings"
+            onMouseDown={(event) => event.stopPropagation()}
+            role="dialog"
+          >
+            <header className="settings-dialog__header">
+              <div>
+                <p className="eyebrow">Remote settings</p>
+                <h2>Connection & options</h2>
+              </div>
+              <button
+                aria-label="Close remote settings"
+                className="icon-button"
+                onClick={() => setSettingsOpen(false)}
+                type="button"
+              >
+                <CloseIcon />
+              </button>
+            </header>
+
+            <p className="settings-dialog__message" aria-live="polite">{remote.message}</p>
+
+            <div className="settings-dialog__actions">
+              <button
+                aria-label="Stop playback"
+                className="icon-stop-button"
+                disabled={!controlsEnabled}
+                onClick={() => void remote.stop()}
+                type="button"
+              >
+                <StopIcon />
+                Stop playback
+              </button>
+              <button
+                className="text-button"
+                disabled={remote.token === null}
+                onClick={() => remote.forgetPairing()}
+                type="button"
+              >
+                Forget this Mac
+              </button>
+            </div>
+
+            {status?.capabilities.playlistNavigation ? (
+              <section className="advanced-controls" aria-label="Playlist controls">
+                <button disabled={!controlsEnabled} onClick={() => void remote.previousItem()} type="button">
+                  Previous item
+                </button>
+                <button disabled={!controlsEnabled} onClick={() => void remote.nextItem()} type="button">
+                  Next item
+                </button>
+              </section>
+            ) : null}
+
+            {status?.capabilities.audioTrackSelection || status?.capabilities.subtitleTrackSelection ? (
+              <section className="track-controls" aria-label="Available tracks">
+                {status.capabilities.audioTrackSelection ? (
+                  <label>
+                    Audio track
+                    <select
+                      disabled={!controlsEnabled}
+                      onChange={(event) => void remote.selectAudioTrack(event.currentTarget.value)}
+                      value={status.tracks.audio.find((track) => track.selected)?.id ?? ""}
+                    >
+                      {status.tracks.audio.map((track) => (
+                        <option key={track.id} value={track.id}>
+                          {track.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : null}
+                {status.capabilities.subtitleTrackSelection ? (
+                  <label>
+                    Subtitles
+                    <select
+                      disabled={!controlsEnabled}
+                      onChange={(event) => void remote.selectSubtitleTrack(event.currentTarget.value)}
+                      value={status.tracks.subtitles.find((track) => track.selected)?.id ?? ""}
+                    >
+                      {status.tracks.subtitles.map((track) => (
+                        <option key={track.id} value={track.id}>
+                          {track.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : null}
+              </section>
+            ) : null}
+          </section>
+        </div>
+      ) : null}
 
       <aside className="room-note" aria-label="Remote status summary">
         <p className="eyebrow">Mac VLC Remote / 03</p>

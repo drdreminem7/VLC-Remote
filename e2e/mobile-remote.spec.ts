@@ -35,7 +35,17 @@ test("pairs from a fragment and forgets the Mac", async ({ page }) => {
 
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByRole("heading", { name: "Moonrise, Chapter Four" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Skip backward 10 seconds" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Skip forward 10 seconds" })).toBeVisible();
+  await expect(page.getByText("moonrise.mkv")).toHaveCount(0);
+  await expect(page.getByText("Local API protected")).toHaveCount(0);
+  expect(
+    await page.evaluate(
+      () => document.scrollingElement?.scrollHeight === window.innerHeight
+    )
+  ).toBe(true);
   await page.getByRole("button", { name: "Open remote settings" }).click();
+  await expect(page.getByRole("dialog", { name: "Remote settings" })).toBeVisible();
   await page.getByRole("button", { name: "Forget this Mac" }).click();
 
   await expect(page.getByRole("heading", { name: "Pair this phone." })).toBeVisible();
@@ -91,7 +101,10 @@ test("recovers from a temporary backend failure", async ({ page }) => {
   });
 
   await page.goto(`/#token=${TOKEN}`);
-  await expect(page.getByRole("alert")).toContainText("VLC is not responding");
+  await expect(page.getByRole("alert")).toContainText("VLC unavailable");
+  await expect(
+    page.getByText("VLC’s local control interface is not responding on this Mac.")
+  ).toBeVisible();
   await expect(page.getByRole("heading", { name: "Moonrise, Chapter Four" })).toBeVisible({
     timeout: 4000
   });
