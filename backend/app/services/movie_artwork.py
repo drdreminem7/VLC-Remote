@@ -64,8 +64,7 @@ def _tmdb_poster_source(payload: object, query: str) -> str | None:
         if normalized_title == normalized_query:
             match_score = 2
         elif (
-            normalized_query in normalized_title
-            or normalized_title in normalized_query
+            normalized_query in normalized_title or normalized_title in normalized_query
         ):
             match_score = 1
         else:
@@ -186,16 +185,13 @@ class MovieArtworkLookup:
         response = await self._client.get(source)
         response.raise_for_status()
         content_type = response.headers.get("content-type", "").split(";", 1)[0]
-        if not content_type.startswith("image/") or len(
-            response.content
-        ) > MAX_IMAGE_BYTES:
+        if (
+            not content_type.startswith("image/")
+            or len(response.content) > MAX_IMAGE_BYTES
+        ):
             return None
-        return (
-            "data:"
-            + content_type
-            + ";base64,"
-            + base64.b64encode(response.content).decode("ascii")
-        )
+        encoded_image: str = base64.b64encode(response.content).decode("ascii")
+        return f"data:{content_type};base64,{encoded_image}"
 
     async def lookup(self, title: str) -> str | None:
         query = title.strip()

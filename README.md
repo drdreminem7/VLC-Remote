@@ -72,9 +72,9 @@ phone service, then shows the native pairing QR as soon as the service is ready.
 There is no Login Item, LaunchAgent, or automatic start at macOS login.
 
 Close the QR window whenever you like; the phone remote keeps running. Choose
-**Quit VLC Remote** from the Dock to stop the phone service while leaving
-VLC itself open. If the project is moved later, choose its new folder from the
-app menu.
+**Quit VLC Remote** from the Dock to stop the phone service and request a
+graceful quit from VLC. If the project is moved later, choose its new folder
+from the app menu.
 
 ## Phase 2 API
 

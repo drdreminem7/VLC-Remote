@@ -28,6 +28,7 @@ as verified unless it completed on the real Mac and VLC instance.
 - [ ] Restore Wi-Fi and confirm automatic recovery.
 - [ ] Quit VLC and confirm the specific VLC-unavailable message.
 - [ ] Restart VLC with `make vlc-http` and confirm recovery.
+- [ ] Quit **VLC Remote** and confirm that both the phone service and VLC close.
 - [ ] Use **Forget this Mac**, then scan a new QR to pair again.
 
 ## Capability-gated controls

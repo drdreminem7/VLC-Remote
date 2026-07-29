@@ -23,6 +23,7 @@ private enum LauncherError: LocalizedError {
 final class MenuBarLauncher: NSObject, NSApplicationDelegate {
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     private let defaultsKey = "projectRoot"
+    private let vlcBundleIdentifier = "org.videolan.vlc"
     private let statusMenuItem = NSMenuItem(title: "Remote is stopped", action: nil, keyEquivalent: "")
     private let startMenuItem = NSMenuItem(title: "Start Remote", action: #selector(startRemote), keyEquivalent: "s")
     private let showQRMenuItem = NSMenuItem(title: "Show Pairing QR", action: #selector(showPairingQR), keyEquivalent: "q")
@@ -54,6 +55,7 @@ final class MenuBarLauncher: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         stopRemote()
+        quitVLC()
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
@@ -233,6 +235,12 @@ final class MenuBarLauncher: NSObject, NSApplicationDelegate {
 
     @objc private func quit() {
         NSApp.terminate(nil)
+    }
+
+    private func quitVLC() {
+        NSWorkspace.shared.runningApplications
+            .filter { $0.bundleIdentifier == vlcBundleIdentifier }
+            .forEach { _ = $0.terminate() }
     }
 
     private func capturePairingURL(from root: URL) throws -> String {
