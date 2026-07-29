@@ -15,6 +15,7 @@ from urllib.request import Request, urlopen
 from backend.app.services.secret_store import load_vlc_http_password
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+NODE_BIN_DIRECTORIES = (Path("/usr/local/bin"), Path("/opt/homebrew/bin"))
 
 
 def fail(message: str) -> int:
@@ -46,6 +47,14 @@ def local_vlc_http_is_reusable() -> bool:
         return False
 
 
+def configure_node_path() -> str | None:
+    """Make Finder/Dock launches see common macOS Node.js installation paths."""
+    existing_paths = os.environ.get("PATH", "").split(":")
+    search_paths = [str(directory) for directory in NODE_BIN_DIRECTORIES]
+    os.environ["PATH"] = ":".join(search_paths + existing_paths)
+    return shutil.which("npm")
+
+
 def main() -> int:
     python = PROJECT_ROOT / ".venv" / "bin" / "python"
     launcher = PROJECT_ROOT / "scripts" / "launch_vlc_http.py"
@@ -53,14 +62,15 @@ def main() -> int:
         return fail("Dependencies are missing. Run 'make bootstrap' first.")
     if not (PROJECT_ROOT / "node_modules").is_dir():
         return fail("Frontend dependencies are missing. Run 'make bootstrap' first.")
-    if shutil.which("npm") is None:
+    npm = configure_node_path()
+    if npm is None:
         return fail("npm was not found. Run 'make bootstrap' after installing Node.js.")
 
     if local_vlc_http_is_reusable():
         print("Reusing the existing local VLC HTTP service.")
     elif run_checked([str(python), str(launcher)], description="VLC launch") != 0:
         return 1
-    if run_checked(["npm", "run", "build"], description="Frontend build") != 0:
+    if run_checked([npm, "run", "build"], description="Frontend build") != 0:
         return 1
 
     allowed_hosts = subprocess.run(

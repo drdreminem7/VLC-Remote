@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import shutil
 import sys
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -60,3 +62,14 @@ def test_menu_bar_does_not_reuse_vlc_without_its_private_password(
     monkeypatch.setattr(run_menu_bar_service, "load_vlc_http_password", lambda: None)
 
     assert run_menu_bar_service.local_vlc_http_is_reusable() is False
+
+
+def test_menu_bar_adds_common_node_paths_for_dock_launches(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("PATH", "/usr/bin:/bin")
+    monkeypatch.setattr(shutil, "which", lambda name: "/usr/local/bin/npm")
+
+    assert run_menu_bar_service.configure_node_path() == "/usr/local/bin/npm"
+    assert run_menu_bar_service.NODE_BIN_DIRECTORIES[0] == Path("/usr/local/bin")
+    assert run_menu_bar_service.NODE_BIN_DIRECTORIES[1] == Path("/opt/homebrew/bin")
