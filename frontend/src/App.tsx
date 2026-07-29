@@ -8,6 +8,7 @@ import { clamp, formatDuration } from "./utils/time";
 const DEFAULT_RATES = [0.5, 0.75, 1, 1.25, 1.5, 2];
 const VIDEO_FILE_EXTENSION =
   /\.(?:3g2|3gp|asf|avi|divx|flv|m2ts|m4v|mkv|mov|mp4|mpeg|mpg|mts|ogm|ogv|ts|vob|webm|wmv)$/i;
+const SEEK_SETTLE_TOLERANCE_SECONDS = 3;
 
 function normalizePlaybackRate(rate: number): number {
   return Math.round(rate * 100) / 100;
@@ -203,11 +204,17 @@ export default function App() {
   );
 
   useEffect(() => {
-    if (!seekingRef.current) {
+    const target = seekPreviewRef.current;
+    if (
+      !seekingRef.current &&
+      target !== null &&
+      status !== null &&
+      Math.abs(status.time.elapsedSeconds - target) <= SEEK_SETTLE_TOLERANCE_SECONDS
+    ) {
       setSeekPreview(null);
       seekPreviewRef.current = null;
     }
-  }, [status?.time.elapsedSeconds]);
+  }, [status]);
 
   useEffect(() => {
     if (posterTitle === null) {
@@ -257,9 +264,12 @@ export default function App() {
     }
     const target = seekPreviewRef.current;
     seekingRef.current = false;
-    seekPreviewRef.current = null;
-    setSeekPreview(null);
-    void remote.seekAbsolute(target);
+    void remote.seekAbsolute(target).then((nextStatus) => {
+      if (nextStatus === null && seekPreviewRef.current === target) {
+        seekPreviewRef.current = null;
+        setSeekPreview(null);
+      }
+    });
   };
 
   const adjustVolume = (change: -5 | 5) => {

@@ -150,7 +150,21 @@ class MovieArtworkLookup:
             },
         )
         response.raise_for_status()
-        return _tmdb_poster_source(response.json(), title)
+        source = _tmdb_poster_source(response.json(), title)
+        if source is not None or year is None:
+            return source
+
+        parameters.pop("year")
+        retry_response = await self._client.get(
+            TMDB_SEARCH_API,
+            params=parameters,
+            headers={
+                "Authorization": f"Bearer {self._tmdb_api_token}",
+                "Accept": "application/json",
+            },
+        )
+        retry_response.raise_for_status()
+        return _tmdb_poster_source(retry_response.json(), title)
 
     async def _wikimedia_source(self, query: str) -> str | None:
         parameters = {

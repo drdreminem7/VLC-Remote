@@ -264,6 +264,30 @@ describe("mobile remote", () => {
     expect(seekRequest?.[1]?.body).toBe('{"mode":"absolute","seconds":1800}');
   });
 
+  it("keeps a released timeline position visible until VLC confirms the seek", async () => {
+    window.localStorage.setItem("mac-vlc-remote.access-token.v1", TOKEN);
+    let resolveSeek: ((value: Response) => void) | undefined;
+    const seekResponse = new Promise<Response>((resolve) => {
+      resolveSeek = resolve;
+    });
+    const confirmedStatus = {
+      ...pausedStatus,
+      time: { ...pausedStatus.time, elapsedSeconds: 1800, position: 0.28 }
+    };
+    const fetchMock = remoteFetch(response(pausedStatus), seekResponse);
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<App />);
+    const timeline = await screen.findByLabelText(/Seek to 24:42/);
+    fireEvent.change(timeline, { target: { value: "1800" } });
+    fireEvent.pointerUp(timeline);
+
+    expect(screen.getByText("30:00")).toBeInTheDocument();
+
+    resolveSeek?.(response(confirmedStatus));
+    await waitFor(() => expect(screen.getByText("30:00")).toBeInTheDocument());
+  });
+
   it("seeks when a timeline position is tapped", async () => {
     window.localStorage.setItem("mac-vlc-remote.access-token.v1", TOKEN);
     const fetchMock = pairedFetch();

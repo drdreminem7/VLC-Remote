@@ -26,7 +26,7 @@ export interface RemoteState {
   play(): Promise<void>;
   pause(): Promise<void>;
   stop(): Promise<void>;
-  seekAbsolute(seconds: number): Promise<void>;
+  seekAbsolute(seconds: number): Promise<VlcStatus | null>;
   seekRelative(seconds: number): Promise<void>;
   setVolume(percent: number): Promise<void>;
   setMuted(muted: boolean): Promise<void>;
@@ -236,9 +236,9 @@ export function useRemote(): RemoteState {
     async (
       action: string,
       command: (activeApi: RemoteApi, signal: AbortSignal) => Promise<VlcStatus>
-    ) => {
+    ): Promise<VlcStatus | null> => {
       if (api === null || commandBusyRef.current || !navigator.onLine) {
-        return;
+        return null;
       }
 
       commandControllerRef.current?.abort();
@@ -250,9 +250,10 @@ export function useRemote(): RemoteState {
       try {
         const nextStatus = await command(api, controller.signal);
         applyStatus(nextStatus);
+        return nextStatus;
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") {
-          return;
+          return null;
         }
         const nextConnection = connectionFromError(error);
         if (nextConnection === "unauthenticated") {
@@ -267,6 +268,7 @@ export function useRemote(): RemoteState {
             ? error.message
             : describeConnection(nextConnection)
         );
+        return null;
       } finally {
         if (commandControllerRef.current === controller) {
           commandControllerRef.current = null;
@@ -297,30 +299,55 @@ export function useRemote(): RemoteState {
     pendingAction,
     token,
     forgetPairing,
-    togglePlayback: () => runCommand("toggle", (activeApi, signal) => activeApi.togglePlayback(signal)),
-    play: () => runCommand("play", (activeApi, signal) => activeApi.play(signal)),
-    pause: () => runCommand("pause", (activeApi, signal) => activeApi.pause(signal)),
-    stop: () => runCommand("stop", (activeApi, signal) => activeApi.stop(signal)),
+    togglePlayback: () =>
+      runCommand("toggle", (activeApi, signal) => activeApi.togglePlayback(signal)).then(
+        () => undefined
+      ),
+    play: () =>
+      runCommand("play", (activeApi, signal) => activeApi.play(signal)).then(
+        () => undefined
+      ),
+    pause: () =>
+      runCommand("pause", (activeApi, signal) => activeApi.pause(signal)).then(
+        () => undefined
+      ),
+    stop: () =>
+      runCommand("stop", (activeApi, signal) => activeApi.stop(signal)).then(
+        () => undefined
+      ),
     seekAbsolute: (seconds) =>
       runCommand("seek", (activeApi, signal) => activeApi.seekAbsolute(seconds, signal)),
     seekRelative: (seconds) =>
-      runCommand("seek", (activeApi, signal) => activeApi.seekRelative(seconds, signal)),
+      runCommand("seek", (activeApi, signal) => activeApi.seekRelative(seconds, signal)).then(
+        () => undefined
+      ),
     setVolume: (percent) =>
-      runCommand("volume", (activeApi, signal) => activeApi.setVolume(percent, signal)),
+      runCommand("volume", (activeApi, signal) => activeApi.setVolume(percent, signal)).then(
+        () => undefined
+      ),
     setMuted: (muted) =>
-      runCommand("mute", (activeApi, signal) => activeApi.setMuted(muted, signal)),
+      runCommand("mute", (activeApi, signal) => activeApi.setMuted(muted, signal)).then(
+        () => undefined
+      ),
     setRate: (rate) =>
-      runCommand("rate", (activeApi, signal) => activeApi.setRate(rate, signal)),
+      runCommand("rate", (activeApi, signal) => activeApi.setRate(rate, signal)).then(
+        () => undefined
+      ),
     selectAudioTrack: (trackId) =>
       runCommand("audio-track", (activeApi, signal) =>
         activeApi.selectAudioTrack(trackId, signal)
-      ),
+      ).then(() => undefined),
     selectSubtitleTrack: (trackId) =>
       runCommand("subtitle-track", (activeApi, signal) =>
         activeApi.selectSubtitleTrack(trackId, signal)
+      ).then(() => undefined),
+    nextItem: () =>
+      runCommand("next", (activeApi, signal) => activeApi.nextItem(signal)).then(
+        () => undefined
       ),
-    nextItem: () => runCommand("next", (activeApi, signal) => activeApi.nextItem(signal)),
     previousItem: () =>
-      runCommand("previous", (activeApi, signal) => activeApi.previousItem(signal))
+      runCommand("previous", (activeApi, signal) => activeApi.previousItem(signal)).then(
+        () => undefined
+      )
   };
 }
