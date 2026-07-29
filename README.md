@@ -89,6 +89,11 @@ An empty `VLC_REMOTE_ACCESS_TOKEN` causes a 32-byte token to be generated in
 the current user's protected Application Support directory when pairing or a
 protected endpoint is first used. Do not set a weaker token manually.
 
+Movie posters are looked up on the Mac host. To use TMDB as the primary source,
+add `TMDB_API_TOKEN=<your TMDB API Read Access Token>` to the local `.env` file.
+The token is never sent to the phone; if it is absent or a title has no usable
+TMDB poster, the service falls back to Wikimedia and caches the result.
+
 The exposed control surface is intentionally fixed:
 
 - normalized status;

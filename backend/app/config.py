@@ -29,13 +29,19 @@ class Settings(BaseSettings):
     vlc_http_base_url: AnyHttpUrl = AnyHttpUrl("http://127.0.0.1:8080")
     vlc_http_password: SecretStr | None = None
     vlc_remote_access_token: SecretStr | None = None
+    tmdb_api_token: SecretStr | None = None
     vlc_remote_log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
     vlc_remote_allowed_hosts: str = "localhost,127.0.0.1"
     vlc_remote_enable_discovery: bool = True
     vlc_remote_state_directory: Path | None = Field(default=None, exclude=True)
     _generated_access_token: SecretStr | None = PrivateAttr(default=None)
 
-    @field_validator("vlc_http_password", "vlc_remote_access_token", mode="before")
+    @field_validator(
+        "vlc_http_password",
+        "vlc_remote_access_token",
+        "tmdb_api_token",
+        mode="before",
+    )
     @classmethod
     def empty_secret_is_unconfigured(cls, value: object) -> object:
         """Treat empty environment values as intentionally unconfigured."""

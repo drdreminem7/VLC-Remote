@@ -56,7 +56,13 @@ def create_app(
         active_vlc_client = HttpxVlcClient.from_settings(active_settings)
     else:
         active_vlc_client = UnconfiguredVlcClient()
-    active_artwork_lookup = artwork_lookup or MovieArtworkLookup()
+    active_artwork_lookup = artwork_lookup or MovieArtworkLookup(
+        tmdb_api_token=(
+            active_settings.tmdb_api_token.get_secret_value()
+            if active_settings.tmdb_api_token is not None
+            else None
+        )
+    )
 
     @asynccontextmanager
     async def lifespan(_application: FastAPI) -> AsyncIterator[None]:
