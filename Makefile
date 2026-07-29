@@ -47,7 +47,7 @@ menu-bar-build:
 	./scripts/build_menu_bar_launcher.sh
 
 menu-bar: menu-bar-build
-	open "dist/Mac VLC Remote.app"
+	open "dist/VLC Remote.app"
 
 app-install: menu-bar-build
 	./scripts/install_macos_app.sh

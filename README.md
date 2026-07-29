@@ -1,4 +1,4 @@
-# Mac VLC Remote
+# VLC Remote
 
 A secure, local, mobile-first web remote for VLC Media Player on macOS. The
 React interface runs in a phone browser; a FastAPI service on the Mac is the
@@ -65,14 +65,14 @@ Build, install, and open the native Mac app with its dedicated remote icon:
 make app
 ```
 
-The app is installed at `~/Applications/Mac VLC Remote.app` and appears in the
+The app is installed at `/Applications/VLC Remote.app` and appears in the
 Dock. On its first launch, choose this project folder. Every later app launch
 automatically starts the safe loopback-only VLC helper, builds and starts the
 phone service, then shows the native pairing QR as soon as the service is ready.
 There is no Login Item, LaunchAgent, or automatic start at macOS login.
 
 Close the QR window whenever you like; the phone remote keeps running. Choose
-**Quit Mac VLC Remote** from the Dock to stop the phone service while leaving
+**Quit VLC Remote** from the Dock to stop the phone service while leaving
 VLC itself open. If the project is moved later, choose its new folder from the
 app menu.
 

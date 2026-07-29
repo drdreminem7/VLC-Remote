@@ -18,7 +18,7 @@ from backend.app.services.pairing import (
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Display a local pairing QR code for Mac VLC Remote."
+        description="Display a local pairing QR code for VLC Remote."
     )
     parser.add_argument("--host", help="specific hostname or local IP to use")
     parser.add_argument("--port", type=int, default=8000, help="remote service port")

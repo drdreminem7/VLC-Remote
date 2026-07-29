@@ -9,7 +9,7 @@ private enum LauncherError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .invalidProjectFolder:
-            return "Choose the Mac VLC Remote project folder (the one containing Makefile)."
+            return "Choose the VLC Remote project folder (the one containing Makefile)."
         case .pairingUnavailable:
             return "The remote started, but its pairing QR could not be created. See the service log."
         }
@@ -81,7 +81,7 @@ final class MenuBarLauncher: NSObject, NSApplicationDelegate {
 
     private func configureMenu() {
         guard let button = statusItem.button else { return }
-        button.image = NSImage(systemSymbolName: "dot.radiowaves.left.and.right", accessibilityDescription: "Mac VLC Remote")
+        button.image = NSImage(systemSymbolName: "dot.radiowaves.left.and.right", accessibilityDescription: "VLC Remote")
         button.image?.isTemplate = true
 
         let menu = NSMenu()
@@ -100,7 +100,7 @@ final class MenuBarLauncher: NSObject, NSApplicationDelegate {
         logItem.target = self
         menu.addItem(logItem)
         menu.addItem(.separator())
-        let quitItem = NSMenuItem(title: "Quit Mac VLC Remote", action: #selector(quit), keyEquivalent: "q")
+        let quitItem = NSMenuItem(title: "Quit VLC Remote", action: #selector(quit), keyEquivalent: "q")
         quitItem.target = self
         menu.addItem(quitItem)
         statusItem.menu = menu
@@ -119,7 +119,7 @@ final class MenuBarLauncher: NSObject, NSApplicationDelegate {
     @objc private func chooseProjectFolder(_ sender: Any?) {
         NSApp.activate(ignoringOtherApps: true)
         let panel = NSOpenPanel()
-        panel.title = "Choose the Mac VLC Remote project folder"
+        panel.title = "Choose the VLC Remote project folder"
         panel.message = "Choose the folder containing Makefile and the .venv directory."
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
@@ -203,7 +203,7 @@ final class MenuBarLauncher: NSObject, NSApplicationDelegate {
         stack.edgeInsets = NSEdgeInsets(top: 24, left: 24, bottom: 24, right: 24)
 
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 390, height: 500), styleMask: [.titled, .closable], backing: .buffered, defer: false)
-        window.title = "Pair Mac VLC Remote"
+        window.title = "Pair VLC Remote"
         window.contentView = stack
         window.center()
         window.isReleasedWhenClosed = false

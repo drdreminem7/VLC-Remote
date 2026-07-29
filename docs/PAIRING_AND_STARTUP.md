@@ -29,7 +29,7 @@ opened from the Dock, it performs the same safe VLC launch and starts the phone
 service, then displays its native QR window when ready. It does not install a
 Login Item or LaunchAgent, and it never starts by itself at macOS login.
 
-Closing the QR window leaves the remote and VLC running. **Quit Mac VLC Remote**
+Closing the QR window leaves the remote and VLC running. **Quit VLC Remote**
 stops FastAPI while leaving VLC playing. The app keeps its start/build diagnostics
 in `~/Library/Logs/MacVlcRemote/menu-bar-service.log` with mode `0600`; it does
 not log the pairing link or either secret.

@@ -1,6 +1,6 @@
 # Architecture
 
-Mac VLC Remote is a same-origin local web application. The phone never contacts
+VLC Remote is a same-origin local web application. The phone never contacts
 VLC directly and never receives VLC's password.
 
 ```text
@@ -36,7 +36,7 @@ pairing URL/QR, and runs FastAPI on one origin. The phone loads the app from the
 Mac, then polls `/api/v1/status` with the stored bearer token. FastAPI maps each
 fixed request to a typed VLC operation and returns normalized state.
 
-`make app` builds and installs an optional `Mac VLC Remote.app` beneath the
+`make app` builds and installs an optional `VLC Remote.app` beneath the
 current user's Applications folder. It never starts at login. Each app launch
 invokes `scripts/run_menu_bar_service.py`, which runs the same safe VLC helper,
 then builds and starts FastAPI without printing the pairing URL to a terminal or

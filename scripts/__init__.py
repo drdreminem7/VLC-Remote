@@ -1,1 +1,1 @@
-"""Local command-line helpers for Mac VLC Remote."""
+"""Local command-line helpers for VLC Remote."""

@@ -2,7 +2,7 @@
 set -eu
 
 project_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-app_root="$project_root/dist/Mac VLC Remote.app"
+app_root="$project_root/dist/VLC Remote.app"
 contents="$app_root/Contents"
 iconset="$project_root/dist/AppIcon.iconset"
 
@@ -20,7 +20,7 @@ rm -rf "$app_root"
 rm -rf "$iconset"
 mkdir -p "$contents/MacOS" "$contents/Resources"
 swiftc -parse-as-library "$project_root/macos/MenuBarLauncher.swift" \
-  -o "$contents/MacOS/Mac VLC Remote"
+  -o "$contents/MacOS/VLC Remote"
 install -m 644 "$project_root/macos/Info.plist" "$contents/Info.plist"
 mkdir -p "$iconset"
 for icon_size in 16 32 128 256 512; do
