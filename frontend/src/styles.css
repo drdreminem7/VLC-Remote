@@ -421,7 +421,7 @@ svg {
   align-items: center;
   justify-content: center;
   justify-items: center;
-  gap: var(--space-sm);
+  gap: 35px;
   padding-inline: 0;
   user-select: none;
   animation: enter var(--duration-enter) 130ms var(--ease-out-expo) both;
@@ -889,7 +889,7 @@ svg {
 
   .transport {
     grid-template-columns: auto auto auto;
-    gap: var(--space-xs);
+    gap: 35px;
     padding-inline: 0;
   }
 

@@ -103,7 +103,10 @@ test("pairs from a fragment and forgets the Mac", async ({ page }) => {
       (pauseButton!.x + pauseButton!.width / 2) -
         (previousButton!.x + previousButton!.width / 2)
     )
-  ).toBeLessThan(100);
+  ).toBeGreaterThan(100);
+  expect(await page.locator(".transport").evaluate((element) => getComputedStyle(element).gap)).toBe(
+    "35px"
+  );
   await page.getByRole("button", { name: "Open remote settings" }).click();
   await expect(page.getByRole("dialog", { name: "Remote settings" })).toBeVisible();
   await page.getByRole("button", { name: "Forget this Mac" }).click();

@@ -225,6 +225,28 @@ describe("mobile remote", () => {
     expect(seekRequest?.[1]?.body).toBe('{"mode":"absolute","seconds":1800}');
   });
 
+  it("seeks when a timeline position is tapped", async () => {
+    window.localStorage.setItem("mac-vlc-remote.access-token.v1", TOKEN);
+    const fetchMock = pairedFetch();
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<App />);
+    const timeline = await screen.findByLabelText(/Seek to 24:42/);
+
+    fireEvent.change(timeline, { target: { value: "1800" } });
+    fireEvent.click(timeline);
+
+    await waitFor(() => {
+      expect(fetchMock.mock.calls.map(([url]) => url)).toContain(
+        "/api/v1/playback/seek"
+      );
+    });
+    const seekRequest = fetchMock.mock.calls.find(
+      ([url]) => url === "/api/v1/playback/seek"
+    );
+    expect(seekRequest?.[1]?.body).toBe('{"mode":"absolute","seconds":1800}');
+  });
+
   it("shows actionable VLC failure messaging and leaves controls disabled", async () => {
     window.localStorage.setItem("mac-vlc-remote.access-token.v1", TOKEN);
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(

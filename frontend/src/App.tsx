@@ -322,6 +322,7 @@ export default function App() {
                 seekPreviewRef.current = value;
                 setSeekPreview(value);
               }}
+              onClick={commitSeek}
               onKeyUp={commitSeek}
               onPointerDown={beginSeeking}
               onPointerUp={commitSeek}
