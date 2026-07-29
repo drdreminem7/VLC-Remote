@@ -2,10 +2,12 @@
 
 ## Verification status
 
-Live VLC HTTP verification is **pending**. VLC is installed, but its HTTP
-interface was not listening during Phase 0 and neither `VLC_HTTP_BASE_URL` nor
-`VLC_HTTP_PASSWORD` was configured in the shell. No playback command has been
-claimed as successfully tested.
+Live VLC HTTP verification is **blocked on a safe launch configuration**. VLC
+is installed, but its HTTP interface was not listening during Phase 0 and
+neither `VLC_HTTP_BASE_URL` nor `VLC_HTTP_PASSWORD` was configured in the
+shell. On 2026-07-29, enabling **Web** in the installed VLC 3.0.23 preferences
+caused subsequent normal launches to exit immediately. No playback command has
+been claimed as successfully tested.
 
 This document separates facts observed from the installed application from
 behaviour that still needs a live VLC session.
@@ -77,10 +79,42 @@ correct.
 
 No state-changing command was sent.
 
+## VLC 3.0.23 launch incompatibility
+
+On 2026-07-29, the following behavior was reproduced on the installed build:
+
+1. Enabling **Web** in VLC preferences saved `extraintf=lua:http` in `vlcrc`.
+2. A normal VLC launch briefly created its main window and then exited cleanly.
+3. Launching with an empty extra-interface override kept VLC open, isolating
+   the saved extra-interface value as the cause.
+4. Turning off the basic **Web** checkbox left `extraintf=lua`.
+5. Clearing **Interface → Main interfaces → Extra interface modules** removed
+   the active `extraintf` entry.
+6. VLC then opened normally without a command-line override and remained
+   running. Nothing was listening on TCP port 8080.
+
+Until a different launch configuration is verified, do not enable **Web** or
+**Lua interpreter** on this installation.
+
+To recover if VLC starts exiting immediately:
+
+1. Launch VLC once with an empty extra-interface override:
+
+   ```bash
+   open -na /Applications/VLC.app --args --extraintf=
+   ```
+
+2. Open **VLC media player → Settings…**, select **Show settings: All**, then
+   open **Interface → Main interfaces**.
+3. Turn off **Web** and **Lua interpreter**, clear **Extra interface modules**,
+   and save.
+4. Quit that recovery instance and open VLC normally.
+
 ## Diagnostic harness
 
-Run the default, non-destructive status check after enabling VLC's HTTP
-interface:
+Do not enable the HTTP interface solely to run this diagnostic on the current
+VLC installation. After a safe configuration is found, run the default,
+non-destructive status check with:
 
 ```bash
 VLC_HTTP_BASE_URL=http://127.0.0.1:8080 \
@@ -126,8 +160,9 @@ is acceptable. The integration suite stops playback at the end.
 - Mute is not listed as a deterministic HTTP command in the installed interface
   documentation. The planned backend process-state fallback remains necessary
   unless live testing establishes a better mechanism.
-- The default port was closed during inspection, so Phase 2 should be built and
-  tested with mocked responses before any live verification.
+- The current GUI Web/Lua configuration prevents VLC from remaining open. The
+  default port is closed, so Phase 2 should be built and tested with mocked
+  responses before any live verification.
 
 ## Live verification record
 
@@ -135,6 +170,7 @@ Fill this section only after successful real-VLC checks.
 
 | Date | VLC version | Media type | Command | Exact request shape | Relevant response fields | Result / limitation |
 | --- | --- | --- | --- | --- | --- | --- |
+| 2026-07-29 | 3.0.23 | None | Launch with Web enabled | N/A | N/A | VLC exited; setting reverted |
 | Pending | 3.0.23 | User-controlled test media | Status | `/requests/status.json` | Pending | Not run |
 
 Redacted fixture files derived from a real response must be reviewed before

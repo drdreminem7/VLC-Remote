@@ -13,8 +13,10 @@ accurate.
 - [x] Add `scripts/check_vlc.py`.
 - [x] Add `docs/VLC_COMPATIBILITY.md`.
 - [x] Record incompatibilities, unknowns, and required capability gates.
+- [x] Reproduce and document the VLC 3.0.23 Web/Lua launch incompatibility,
+  then restore normal VLC startup.
 - [ ] Run a live authenticated status check after the VLC HTTP interface is
-  explicitly configured.
+  safely configured without breaking normal startup.
 - [ ] Run state-changing compatibility checks with user-controlled media and
   explicit consent.
 - [ ] Review and promote redacted responses into test fixtures.

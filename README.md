@@ -51,20 +51,21 @@ make run
 This builds the frontend into FastAPI's static directory and serves the UI and
 API together at `http://127.0.0.1:8000`.
 
-## Enable VLC's HTTP interface
+## VLC HTTP interface status
 
-These menu names match the installed VLC 3.0.23 build and may vary slightly:
+Do **not** enable **Web** or **Lua interpreter** in the installed VLC 3.0.23
+build. On this Mac, enabling the Web interface saved `extraintf=lua:http` and
+caused later normal VLC launches to exit immediately. Disabling Web alone left
+`extraintf=lua`; the advanced **Extra interface modules** field also had to be
+cleared before VLC opened normally again.
 
-1. Open VLC and choose **VLC media player → Settings…** (or press `⌘,`).
-2. At the bottom of the settings window, change **Show settings** to **All**.
-3. In the tree, open **Interface → Main interfaces** and enable **Web**.
-4. Open **Interface → Main interfaces → Lua**.
-5. Set a strong password in the **Lua HTTP / Password** field.
-6. Search the advanced settings for **HTTP server address** and set it to
-   `127.0.0.1` where the installed build exposes that field.
-7. Save the settings, quit VLC completely, and reopen it.
+Live VLC HTTP integration is therefore blocked on a safe, reproducible launch
+configuration. See [VLC compatibility](docs/VLC_COMPATIBILITY.md) for the
+observed evidence and recovery steps. The application foundation and mocked
+backend work do not require the live interface.
 
-Confirm that VLC is listening locally:
+When a safe setup is established, confirm that VLC is listening only on
+localhost before sending credentials:
 
 ```bash
 lsof -nP -iTCP:8080 -sTCP:LISTEN
@@ -83,7 +84,8 @@ VLC_HTTP_BASE_URL=http://127.0.0.1:8080 python3 scripts/check_vlc.py
 unset VLC_HTTP_PASSWORD
 ```
 
-The default diagnostic sends no playback commands and never prints the
+Do not run the diagnostic on this VLC installation yet. Once a safe listener
+exists, its default mode sends no playback commands and never prints the
 password. See [VLC compatibility](docs/VLC_COMPATIBILITY.md) before running its
 explicit state-changing mode.
 
@@ -116,7 +118,8 @@ configuration. `.env.example` contains placeholders only.
 ## Testing and compatibility
 
 Automated tests do not require VLC. Live VLC HTTP behavior remains pending
-until the interface is enabled and a user-controlled media file is loaded.
+until a safe configuration can keep this VLC build open with a localhost-only
+listener and user-controlled media is loaded.
 
 - [Implementation specification](SPEC.md)
 - [VLC compatibility evidence](docs/VLC_COMPATIBILITY.md)
