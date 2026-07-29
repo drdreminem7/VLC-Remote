@@ -141,6 +141,22 @@ describe("mobile remote", () => {
     await waitFor(() => expect(playButton).toHaveAttribute("aria-busy", "false"));
   });
 
+  it("rounds VLC's imprecise playback-rate response for the speed selector", async () => {
+    window.localStorage.setItem("mac-vlc-remote.access-token.v1", TOKEN);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>().mockResolvedValue(
+        response({ ...pausedStatus, playbackRate: 0.75018 })
+      )
+    );
+
+    render(<App />);
+
+    expect(await screen.findByRole("combobox", { name: "Speed" })).toHaveValue("0.75");
+    expect(screen.getByRole("option", { name: "0.75×" })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "0.75018×" })).not.toBeInTheDocument();
+  });
+
   it("previews timeline movement and only seeks when the control is released", async () => {
     window.localStorage.setItem("mac-vlc-remote.access-token.v1", TOKEN);
     const fetchMock = pairedFetch();

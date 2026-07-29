@@ -6,6 +6,10 @@ import { clamp, formatDuration } from "./utils/time";
 
 const DEFAULT_RATES = [0.5, 0.75, 1, 1.25, 1.5, 2];
 
+function normalizePlaybackRate(rate: number): number {
+  return Math.round(rate * 100) / 100;
+}
+
 function StatusDot() {
   return <span className="status-dot" aria-hidden="true" />;
 }
@@ -161,12 +165,13 @@ export default function App() {
   const currentElapsed = status?.time.elapsedSeconds ?? 0;
   const displayedElapsed = seekPreview ?? currentElapsed;
   const displayedVolume = volumePreview ?? status?.audio.volumePercent ?? 0;
+  const displayedPlaybackRate = normalizePlaybackRate(status?.playbackRate ?? 1);
   const playbackRates = useMemo(
     () =>
-      Array.from(new Set([...DEFAULT_RATES, status?.playbackRate ?? 1])).sort(
+      Array.from(new Set([...DEFAULT_RATES, displayedPlaybackRate])).sort(
         (first, second) => first - second
       ),
-    [status?.playbackRate]
+    [displayedPlaybackRate]
   );
 
   useEffect(() => {
@@ -396,7 +401,7 @@ export default function App() {
               disabled={!canAdjustRate}
               id="rate-control"
               onChange={(event) => void remote.setRate(Number(event.currentTarget.value))}
-              value={status?.playbackRate ?? 1}
+              value={displayedPlaybackRate}
             >
               {playbackRates.map((rate) => (
                 <option key={rate} value={rate}>
