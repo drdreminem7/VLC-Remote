@@ -81,7 +81,7 @@ describe("mobile remote", () => {
     expect(screen.getByRole("button", { name: "Play playback" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "Skip backward 10 seconds" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "Skip forward 10 seconds" })).toBeEnabled();
-    expect(screen.getByLabelText(/Volume68%/)).toHaveAttribute("max", "200");
+    expect(screen.getByRole("group", { name: "Volume 68 of 200" })).toBeInTheDocument();
     expect(screen.queryByText("moonrise.mkv")).not.toBeInTheDocument();
     expect(screen.queryByText("Local API protected")).not.toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledWith(
@@ -159,6 +159,30 @@ describe("mobile remote", () => {
       "/api/v1/status",
       "/api/v1/audio/mute"
     ]);
+  });
+
+  it("changes volume in five-unit steps", async () => {
+    window.localStorage.setItem("mac-vlc-remote.access-token.v1", TOKEN);
+    const louderStatus = {
+      ...pausedStatus,
+      audio: { volumePercent: 73, muted: false }
+    };
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(response(pausedStatus))
+      .mockResolvedValueOnce(response(louderStatus));
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<App />);
+    fireEvent.click(await screen.findByRole("button", { name: "Increase volume by 5" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("group", { name: "Volume 73 of 200" })).toBeInTheDocument();
+    });
+    const volumeRequest = fetchMock.mock.calls.find(
+      ([url]) => url === "/api/v1/audio/volume"
+    );
+    expect(volumeRequest?.[1]?.body).toBe('{"percent":73}');
   });
 
   it("rounds VLC's imprecise playback-rate response for the speed selector", async () => {

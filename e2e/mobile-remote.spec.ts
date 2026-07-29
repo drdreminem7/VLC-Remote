@@ -112,6 +112,22 @@ test("keeps transport and mute button colors stable while pressed", async ({ pag
   await expectNoPressedColorFlash(page, "Mute audio");
 });
 
+test("steps volume by five without a color flash", async ({ page }) => {
+  const louderStatus = {
+    ...pausedStatus,
+    audio: { volumePercent: 73, muted: false }
+  };
+  await mockOnlineStatus(page);
+  await page.route("**/api/v1/audio/volume", async (route) => {
+    expect(route.request().postDataJSON()).toEqual({ percent: 73 });
+    await route.fulfill({ contentType: "application/json", body: JSON.stringify(louderStatus) });
+  });
+
+  await page.goto(`/#token=${TOKEN}`);
+  await expectNoPressedColorFlash(page, "Increase volume by 5");
+  await expect(page.getByRole("group", { name: "Volume 73 of 200" })).toBeVisible();
+});
+
 test("recovers from a temporary backend failure", async ({ page }) => {
   let requests = 0;
   await page.route("**/api/v1/status", (route) => {

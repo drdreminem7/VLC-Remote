@@ -82,6 +82,22 @@ function VolumeIcon() {
   );
 }
 
+function MinusIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <path d="M6 12h12" />
+    </svg>
+  );
+}
+
+function PlusIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <path d="M12 6v12M6 12h12" />
+    </svg>
+  );
+}
+
 function MuteIcon() {
   return (
     <svg aria-hidden="true" viewBox="0 0 24 24">
@@ -165,11 +181,8 @@ export default function App() {
   const remote = useRemote();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [seekPreview, setSeekPreview] = useState<number | null>(null);
-  const [volumePreview, setVolumePreview] = useState<number | null>(null);
   const seekingRef = useRef(false);
   const seekPreviewRef = useRef<number | null>(null);
-  const adjustingVolumeRef = useRef(false);
-  const volumePreviewRef = useRef<number | null>(null);
 
   const status = remote.status;
   const isConnected = remote.connection === "online" && status !== null;
@@ -180,7 +193,7 @@ export default function App() {
   const canAdjustRate = controlsEnabled && status?.capabilities.rate === true;
   const currentElapsed = status?.time.elapsedSeconds ?? 0;
   const displayedElapsed = seekPreview ?? currentElapsed;
-  const displayedVolume = volumePreview ?? status?.audio.volumePercent ?? 0;
+  const displayedVolume = status?.audio.volumePercent ?? 0;
   const displayedPlaybackRate = normalizePlaybackRate(status?.playbackRate ?? 1);
   const playbackRates = useMemo(
     () =>
@@ -196,13 +209,6 @@ export default function App() {
       seekPreviewRef.current = null;
     }
   }, [status?.time.elapsedSeconds]);
-
-  useEffect(() => {
-    if (!adjustingVolumeRef.current) {
-      setVolumePreview(null);
-      volumePreviewRef.current = null;
-    }
-  }, [status?.audio.volumePercent]);
 
   useEffect(() => {
     if (!settingsOpen) {
@@ -240,25 +246,14 @@ export default function App() {
     void remote.seekAbsolute(target);
   };
 
-  const beginVolumeAdjustment = () => {
+  const adjustVolume = (change: -5 | 5) => {
     if (!canAdjustVolume) {
       return;
     }
-    adjustingVolumeRef.current = true;
-    const initialValue = clamp(status?.audio.volumePercent ?? 0, 0, 200);
-    volumePreviewRef.current = initialValue;
-    setVolumePreview(initialValue);
-  };
-
-  const commitVolume = () => {
-    if (!adjustingVolumeRef.current || volumePreviewRef.current === null) {
-      return;
+    const target = clamp(displayedVolume + change, 0, 200);
+    if (target !== displayedVolume) {
+      void remote.setVolume(target);
     }
-    const target = volumePreviewRef.current;
-    adjustingVolumeRef.current = false;
-    volumePreviewRef.current = null;
-    setVolumePreview(null);
-    void remote.setVolume(target);
   };
 
   const isPlaying = status?.state === "playing";
@@ -384,32 +379,34 @@ export default function App() {
             <span>{status?.audio.muted ? "Unmute" : "Mute"}</span>
           </button>
 
-          <div className="volume-control">
-            <label htmlFor="volume-control">
+          <div
+            aria-label={`Volume ${displayedVolume} of 200`}
+            className="volume-control"
+            role="group"
+          >
+            <button
+              aria-label="Decrease volume by 5"
+              className="volume-stepper__button"
+              disabled={!canAdjustVolume || displayedVolume === 0}
+              onClick={() => adjustVolume(-5)}
+              type="button"
+            >
+              <MinusIcon />
+            </button>
+            <div aria-live="polite" className="volume-readout">
               <VolumeIcon />
               <span>Volume</span>
-              <span className="volume-value">{displayedVolume}%</span>
-            </label>
-            <input
-              className="range-input range-input--volume"
-              disabled={!canAdjustVolume}
-              id="volume-control"
-              max="200"
-              min="0"
-              onBlur={commitVolume}
-              onChange={(event) => {
-                const value = Number(event.currentTarget.value);
-                adjustingVolumeRef.current = true;
-                volumePreviewRef.current = value;
-                setVolumePreview(value);
-              }}
-              onKeyUp={commitVolume}
-              onPointerDown={beginVolumeAdjustment}
-              onPointerUp={commitVolume}
-              step="1"
-              type="range"
-              value={displayedVolume}
-            />
+              <strong>{displayedVolume}</strong>
+            </div>
+            <button
+              aria-label="Increase volume by 5"
+              className="volume-stepper__button"
+              disabled={!canAdjustVolume || displayedVolume === 200}
+              onClick={() => adjustVolume(5)}
+              type="button"
+            >
+              <PlusIcon />
+            </button>
           </div>
 
           <label className="speed-control" htmlFor="rate-control">
