@@ -196,7 +196,7 @@ describe("mobile remote", () => {
 
     render(<App />);
 
-    expect(await screen.findByRole("combobox", { name: "Speed" })).toHaveValue("0.75");
+    expect(await screen.findByRole("combobox", { name: "Playback speed" })).toHaveValue("0.75");
     expect(screen.getByRole("option", { name: "0.75×" })).toBeInTheDocument();
     expect(screen.queryByRole("option", { name: "0.75018×" })).not.toBeInTheDocument();
   });

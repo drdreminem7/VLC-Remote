@@ -49,6 +49,14 @@ test("pairs from a fragment and forgets the Mac", async ({ page }) => {
 
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByRole("heading", { name: "Moonrise, Chapter Four" })).toBeVisible();
+  expect(
+    await page
+      .getByRole("heading", { name: "Moonrise, Chapter Four" })
+      .evaluate((element) => getComputedStyle(element).whiteSpace)
+  ).toBe("nowrap");
+  expect(await page.evaluate(() => getComputedStyle(document.documentElement).colorScheme)).toBe(
+    "dark"
+  );
   await expect(page.getByRole("button", { name: "Skip backward 10 seconds" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Skip forward 10 seconds" })).toBeVisible();
   await expect(page.getByText("moonrise.mkv")).toHaveCount(0);

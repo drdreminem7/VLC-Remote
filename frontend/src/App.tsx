@@ -376,7 +376,6 @@ export default function App() {
             type="button"
           >
             <MuteIcon />
-            <span>{status?.audio.muted ? "Unmute" : "Mute"}</span>
           </button>
 
           <div
@@ -395,7 +394,6 @@ export default function App() {
             </button>
             <div aria-live="polite" className="volume-readout">
               <VolumeIcon />
-              <span>Volume</span>
               <strong>{displayedVolume}</strong>
             </div>
             <button
@@ -409,10 +407,10 @@ export default function App() {
             </button>
           </div>
 
-          <label className="speed-control" htmlFor="rate-control">
+          <div className="speed-control">
             <SpeedIcon />
-            <span>Speed</span>
             <select
+              aria-label="Playback speed"
               disabled={!canAdjustRate}
               id="rate-control"
               onChange={(event) => void remote.setRate(Number(event.currentTarget.value))}
@@ -424,7 +422,7 @@ export default function App() {
                 </option>
               ))}
             </select>
-          </label>
+          </div>
         </section>
 
       </section>
