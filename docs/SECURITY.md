@@ -17,7 +17,7 @@ sent in HTTP requests. The frontend stores a valid token only for the remote's
 origin, removes the fragment with `history.replaceState`, and offers **Forget
 this Mac** to remove it.
 
-The optional menu-bar launcher keeps a pairing URL only in its memory long
+The optional native Mac app keeps a pairing URL only in its memory long
 enough to render or copy the native QR. It does not pass the URL to the service
 process or write it to the launcher log. The launcher accepts no browser input:
 its fixed start action invokes only repository scripts from the folder the Mac

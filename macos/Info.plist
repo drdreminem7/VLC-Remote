@@ -6,6 +6,8 @@
     <string>Mac VLC Remote</string>
     <key>CFBundleExecutable</key>
     <string>Mac VLC Remote</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
     <key>CFBundleIdentifier</key>
     <string>local.macvlcremote.launcher</string>
     <key>CFBundleName</key>
@@ -16,8 +18,6 @@
     <string>1.0</string>
     <key>LSMinimumSystemVersion</key>
     <string>13.0</string>
-    <key>LSUIElement</key>
-    <true/>
     <key>NSHighResolutionCapable</key>
     <true/>
 </dict>

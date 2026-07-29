@@ -27,26 +27,24 @@ final class MenuBarLauncher: NSObject, NSApplicationDelegate {
     private var serviceProcess: Process?
     private var pairingURL: String?
     private var qrWindow: NSWindow?
-    private var controlWindow: NSWindow?
-    private var controlStatusLabel: NSTextField?
-    private var controlStartButton: NSButton?
-    private var controlQRButton: NSButton?
-    private var controlStopButton: NSButton?
     private var isStarting = false
+    private var startsAfterProjectSelection = false
 
     static func main() {
         let application = NSApplication.shared
         let delegate = MenuBarLauncher()
         application.delegate = delegate
-        application.setActivationPolicy(.accessory)
+        application.setActivationPolicy(.regular)
         application.run()
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         configureMenu()
-        showControlWindow()
         if projectRoot == nil {
+            startsAfterProjectSelection = true
             chooseProjectFolder(nil)
+        } else {
+            startRemote()
         }
     }
 
@@ -55,7 +53,11 @@ final class MenuBarLauncher: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        showControlWindow()
+        if pairingURL != nil {
+            showPairingQR()
+        } else if serviceProcess?.isRunning != true {
+            startRemote()
+        }
         return true
     }
 
@@ -112,10 +114,6 @@ final class MenuBarLauncher: NSObject, NSApplicationDelegate {
         startMenuItem.isEnabled = !running && !isStarting && projectRoot != nil
         showQRMenuItem.isEnabled = running && pairingURL != nil
         stopMenuItem.isEnabled = running
-        controlStatusLabel?.stringValue = status
-        controlStartButton?.isEnabled = !running && !isStarting && projectRoot != nil
-        controlQRButton?.isEnabled = running && pairingURL != nil
-        controlStopButton?.isEnabled = running
     }
 
     @objc private func chooseProjectFolder(_ sender: Any?) {
@@ -133,54 +131,11 @@ final class MenuBarLauncher: NSObject, NSApplicationDelegate {
             }
             UserDefaults.standard.set(folder.standardizedFileURL.path, forKey: defaultsKey)
             updateMenuState()
+            if startsAfterProjectSelection {
+                startsAfterProjectSelection = false
+                startRemote()
+            }
         }
-    }
-
-    private func showControlWindow() {
-        if let controlWindow {
-            NSApp.activate(ignoringOtherApps: true)
-            controlWindow.makeKeyAndOrderFront(nil)
-            return
-        }
-
-        let title = NSTextField(labelWithString: "Mac VLC Remote")
-        title.font = .systemFont(ofSize: 22, weight: .semibold)
-        let subtitle = NSTextField(wrappingLabelWithString: "Start the local phone remote when you want it. It never runs at login.")
-        subtitle.maximumNumberOfLines = 2
-        subtitle.textColor = .secondaryLabelColor
-
-        let status = NSTextField(labelWithString: "Remote is stopped")
-        status.font = .systemFont(ofSize: 13, weight: .medium)
-        controlStatusLabel = status
-
-        let start = NSButton(title: "Start Remote", target: self, action: #selector(startRemote))
-        start.bezelStyle = .rounded
-        controlStartButton = start
-        let qr = NSButton(title: "Show Pairing QR", target: self, action: #selector(showPairingQR))
-        controlQRButton = qr
-        let stop = NSButton(title: "Stop Phone Remote", target: self, action: #selector(stopRemote))
-        controlStopButton = stop
-        let choose = NSButton(title: "Choose Project Folder…", target: self, action: #selector(chooseProjectFolder))
-        let controls = NSStackView(views: [start, qr, stop, choose])
-        controls.orientation = .vertical
-        controls.alignment = .leading
-        controls.spacing = 10
-
-        let stack = NSStackView(views: [title, subtitle, status, controls])
-        stack.orientation = .vertical
-        stack.alignment = .leading
-        stack.spacing = 14
-        stack.edgeInsets = NSEdgeInsets(top: 28, left: 28, bottom: 28, right: 28)
-
-        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 390, height: 300), styleMask: [.titled, .closable], backing: .buffered, defer: false)
-        window.title = "Mac VLC Remote"
-        window.contentView = stack
-        window.isReleasedWhenClosed = false
-        window.center()
-        controlWindow = window
-        updateMenuState()
-        NSApp.activate(ignoringOtherApps: true)
-        window.makeKeyAndOrderFront(nil)
     }
 
     @objc private func startRemote() {

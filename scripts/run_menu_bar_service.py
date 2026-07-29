@@ -7,7 +7,12 @@ import os
 import shutil
 import subprocess
 import sys
+from base64 import b64encode
 from pathlib import Path
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
+
+from backend.app.services.secret_store import load_vlc_http_password
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
@@ -24,6 +29,23 @@ def run_checked(command: list[str], *, description: str) -> int:
     return 0
 
 
+def local_vlc_http_is_reusable() -> bool:
+    """Accept only the password-protected loopback service created by this app."""
+    password = load_vlc_http_password()
+    if password is None:
+        return False
+    credentials = b64encode(f":{password}".encode()).decode("ascii")
+    request = Request(
+        "http://127.0.0.1:8080/requests/status.json",
+        headers={"Authorization": f"Basic {credentials}"},
+    )
+    try:
+        with urlopen(request, timeout=1) as response:  # noqa: S310
+            return int(response.status) == 200
+    except (HTTPError, URLError, TimeoutError, OSError):
+        return False
+
+
 def main() -> int:
     python = PROJECT_ROOT / ".venv" / "bin" / "python"
     launcher = PROJECT_ROOT / "scripts" / "launch_vlc_http.py"
@@ -34,7 +56,9 @@ def main() -> int:
     if shutil.which("npm") is None:
         return fail("npm was not found. Run 'make bootstrap' after installing Node.js.")
 
-    if run_checked([str(python), str(launcher)], description="VLC launch") != 0:
+    if local_vlc_http_is_reusable():
+        print("Reusing the existing local VLC HTTP service.")
+    elif run_checked([str(python), str(launcher)], description="VLC launch") != 0:
         return 1
     if run_checked(["npm", "run", "build"], description="Frontend build") != 0:
         return 1

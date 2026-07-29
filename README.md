@@ -57,24 +57,24 @@ make run
 This builds the frontend into FastAPI's static directory and serves the UI and
 API together at `http://127.0.0.1:8000`.
 
-## Mac menu-bar launcher
+## Mac application launcher
 
-For an on-demand, click-to-start version instead of terminals, build and open
-the native launcher:
+Build, install, and open the native Mac app with its dedicated remote icon:
 
 ```bash
-make menu-bar
+make app
 ```
 
-On its first launch, choose this project folder. A small remote icon appears in
-the Mac menu bar. Choose **Start Remote** and it will safely start the existing
-loopback-only VLC helper, build the UI, start the phone service, and open a
-native QR-code window. There is no login item, LaunchAgent, or automatic start.
+The app is installed at `~/Applications/Mac VLC Remote.app` and appears in the
+Dock. On its first launch, choose this project folder. Every later app launch
+automatically starts the safe loopback-only VLC helper, builds and starts the
+phone service, then shows the native pairing QR as soon as the service is ready.
+There is no Login Item, LaunchAgent, or automatic start at macOS login.
 
-Use **Stop Phone Remote** when finished; it stops the phone service but leaves
-VLC playing. Quit the menu-bar app to ensure the remote stops. The app is built
-at `dist/Mac VLC Remote.app`; you may move it to Applications, but if the
-project is moved later, choose its new folder from the app menu.
+Close the QR window whenever you like; the phone remote keeps running. Choose
+**Quit Mac VLC Remote** from the Dock to stop the phone service while leaving
+VLC itself open. If the project is moved later, choose its new folder from the
+app menu.
 
 ## Phase 2 API
 
@@ -169,8 +169,9 @@ explicit state-changing mode.
 | `make typecheck` | Run mypy and TypeScript checks |
 | `make test` | Run backend and frontend unit tests |
 | `make run` | Build and run the same-origin production-style service |
-| `make menu-bar-build` | Build the native macOS menu-bar launcher |
-| `make menu-bar` | Build and open the on-demand menu-bar launcher |
+| `make menu-bar-build` | Build the native macOS application bundle |
+| `make menu-bar` | Build and open the application from the project folder |
+| `make app` | Install and open the auto-starting Dock application |
 
 ## Security status
 

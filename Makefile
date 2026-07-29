@@ -4,7 +4,7 @@ MYPY := .venv/bin/mypy
 PYTEST := .venv/bin/pytest
 
 .PHONY: bootstrap dev build format lint typecheck test e2e run pairing vlc-http \
-	menu-bar-build menu-bar
+	menu-bar-build menu-bar app-install app
 
 bootstrap:
 	./scripts/bootstrap.sh
@@ -48,3 +48,8 @@ menu-bar-build:
 
 menu-bar: menu-bar-build
 	open "dist/Mac VLC Remote.app"
+
+app-install: menu-bar-build
+	./scripts/install_macos_app.sh
+
+app: app-install
