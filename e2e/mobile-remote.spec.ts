@@ -236,14 +236,15 @@ test("opens the movie library with one touch and plays a listed movie", async ({
   const movie = {
     id: "a".repeat(24),
     title: "The Quiet Film",
-    artworkQuery: "The.Quiet.Film.2024.1080p"
+    artworkQuery: "The.Quiet.Film.2024.1080p",
+    resumeSeconds: null
   };
   await mockOnlineStatus(page);
   await page.route("**/api/v1/library", (route) =>
     route.fulfill({ contentType: "application/json", body: JSON.stringify({ movies: [movie] }) })
   );
   await page.route("**/api/v1/library/play", async (route) => {
-    expect(route.request().postDataJSON()).toEqual({ movieId: movie.id });
+    expect(route.request().postDataJSON()).toEqual({ movieId: movie.id, resume: false });
     await route.fulfill({
       contentType: "application/json",
       body: JSON.stringify({
