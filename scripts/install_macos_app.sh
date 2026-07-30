@@ -3,7 +3,11 @@ set -eu
 
 project_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 source_app="$project_root/dist/VLC Remote.app"
-destination_root="$HOME/Applications"
+if [ -d "/Applications/VLC Remote.app" ]; then
+  destination_root="/Applications"
+else
+  destination_root="$HOME/Applications"
+fi
 destination_app="$destination_root/VLC Remote.app"
 shortcut_launcher_source="$project_root/scripts/start_remote_from_shortcut.sh"
 shortcut_launcher_root="$HOME/.local/bin"
