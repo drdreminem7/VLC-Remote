@@ -347,7 +347,14 @@ export default function App() {
 
   const selectLibraryMovie = (movie: LibraryMovie) => {
     if (typeof movie.resumeSeconds === "number") {
-      setResumeMovie(movie);
+      setLibraryOpen(false);
+      setLibraryPlayingId(movie.id);
+      void remote.playLibraryMovie(movie.id, true).then((nextStatus) => {
+        setLibraryPlayingId(null);
+        if (nextStatus !== null) {
+          setResumeMovie(movie);
+        }
+      });
       return;
     }
     void playLibraryMovie(movie.id);
@@ -842,9 +849,7 @@ export default function App() {
                 className="text-button"
                 disabled={libraryPlayingId === resumeMovie.id}
                 onClick={() => {
-                  const movie = resumeMovie;
                   setResumeMovie(null);
-                  void playLibraryMovie(movie.id);
                 }}
                 type="button"
               >
@@ -856,7 +861,7 @@ export default function App() {
                 onClick={() => {
                   const movie = resumeMovie;
                   setResumeMovie(null);
-                  void playLibraryMovie(movie.id, true);
+                  void playLibraryMovie(movie.id);
                 }}
                 type="button"
               >
