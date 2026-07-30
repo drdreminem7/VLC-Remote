@@ -62,5 +62,6 @@ async def play_movie(
         resume_seconds = await tracker.resume_point(request.movie_id)
         if resume_seconds is not None:
             result = await vlc_client.seek_absolute(resume_seconds)
+            result = await vlc_client.pause()
     tracker.begin(request.movie_id)
     return remember(result, coordinator)

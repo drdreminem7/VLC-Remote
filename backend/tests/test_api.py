@@ -204,6 +204,7 @@ async def test_library_lists_resume_points_and_seeks_only_when_requested(
         ("play_media", "The.Quiet.Film.2024.mkv"),
         ("fullscreen", None),
         ("seek_absolute", 900),
+        ("pause", None),
     ]
 
 
