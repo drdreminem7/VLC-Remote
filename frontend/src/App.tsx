@@ -243,6 +243,7 @@ export default function App() {
   const [libraryVisibleCount, setLibraryVisibleCount] = useState(INITIAL_LIBRARY_MOVIES);
   const [libraryPlayingId, setLibraryPlayingId] = useState<string | null>(null);
   const [resumeMovie, setResumeMovie] = useState<LibraryMovie | null>(null);
+  const [endSessionPromptOpen, setEndSessionPromptOpen] = useState(false);
   const seekingRef = useRef(false);
   const seekPreviewRef = useRef<number | null>(null);
 
@@ -406,6 +407,34 @@ export default function App() {
   const isPlaying = status?.state === "playing";
   const primaryLabel = isPlaying ? "Pause playback" : "Play playback";
   const description = mediaDescription(status, remote.connection);
+
+  const endRemote = async () => {
+    const ended = await remote.endSession();
+    if (ended) {
+      setSettingsOpen(false);
+      setLibraryOpen(false);
+      setResumeMovie(null);
+      setEndSessionPromptOpen(false);
+    }
+  };
+
+  if (remote.sessionEnded) {
+    return (
+      <main className="experience experience--ended" id="main-content">
+        <section className="remote remote--ended" aria-label="VLC Remote ended">
+          <div className="remote-ended__content">
+            <span className="remote-ended__mark" aria-hidden="true">V</span>
+            <p className="eyebrow">Remote ended</p>
+            <h1>Everything is closed.</h1>
+            <p>VLC and VLC Remote have closed on your Mac. You can now close this window.</p>
+            <button className="text-button" onClick={() => window.close()} type="button">
+              Close this window
+            </button>
+          </div>
+        </section>
+      </main>
+    );
+  }
 
   return (
     <main className="experience" id="main-content">
@@ -649,6 +678,14 @@ export default function App() {
               >
                 Forget this Mac
               </button>
+              <button
+                className="end-session-button"
+                disabled={!controlsEnabled}
+                onClick={() => setEndSessionPromptOpen(true)}
+                type="button"
+              >
+                End VLC Remote
+              </button>
             </div>
 
             {status?.capabilities.playlistNavigation ? (
@@ -767,6 +804,34 @@ export default function App() {
                 ) : null}
               </>
             ) : null}
+          </section>
+        </div>
+      ) : null}
+
+      {endSessionPromptOpen ? (
+        <div className="resume-dialog" onMouseDown={() => setEndSessionPromptOpen(false)}>
+          <section
+            aria-label="End VLC Remote"
+            aria-modal="true"
+            className="resume-dialog__sheet"
+            onMouseDown={(event) => event.stopPropagation()}
+            role="dialog"
+          >
+            <p className="eyebrow">End session</p>
+            <h2>Close everything?</h2>
+            <p>VLC, the phone remote, and VLC Remote on your Mac will close.</p>
+            <div className="resume-dialog__actions">
+              <button onClick={() => setEndSessionPromptOpen(false)} type="button">Cancel</button>
+              <button
+                aria-busy={remote.pendingAction === "end-session"}
+                className="end-session-button"
+                disabled={remote.pendingAction !== null}
+                onClick={() => void endRemote()}
+                type="button"
+              >
+                End everything
+              </button>
+            </div>
           </section>
         </div>
       ) : null}

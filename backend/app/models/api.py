@@ -63,3 +63,11 @@ class ErrorResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     error: ErrorBody
+
+
+class RemoteShutdownResponse(BaseModel):
+    """Acknowledgement returned before the Mac closes the remote service."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    status: Literal["shutting_down"] = "shutting_down"

@@ -13,6 +13,7 @@ from backend.app.services.playback_resume import (
     PlaybackResumeStore,
     PlaybackResumeTracker,
 )
+from backend.app.services.remote_shutdown import RemoteShutdownProtocol
 
 ACCESS_TOKEN = "phase-two-test-token-" + ("a" * 24)
 
@@ -23,6 +24,14 @@ class FakeArtworkLookup:
 
     async def aclose(self) -> None:
         return None
+
+
+class FakeRemoteShutdown(RemoteShutdownProtocol):
+    def __init__(self) -> None:
+        self.requested = False
+
+    async def request(self) -> None:
+        self.requested = True
 
 
 def api_settings() -> Settings:
@@ -43,6 +52,7 @@ def request_client(
     artwork: FakeArtworkLookup | None = None,
     movie_library: MovieLibrary | None = None,
     playback_resume_tracker: PlaybackResumeTracker | None = None,
+    remote_shutdown: RemoteShutdownProtocol | None = None,
 ) -> tuple[AsyncClient, ASGITransport]:
     transport = ASGITransport(
         app=create_app(
@@ -51,6 +61,7 @@ def request_client(
             artwork_lookup=artwork,
             movie_library=movie_library,
             playback_resume_tracker=playback_resume_tracker,
+            remote_shutdown=remote_shutdown,
         )
     )
     client = AsyncClient(transport=transport, base_url="http://localhost")
@@ -83,6 +94,24 @@ async def test_status_requires_valid_bearer_token() -> None:
     assert valid.json()["media"]["title"] == "Moonrise, Chapter Four"
     assert valid.json()["capabilities"]["audioTrackSelection"] is False
     assert ACCESS_TOKEN not in valid.text
+
+
+async def test_ending_the_remote_requires_pairing_and_requests_native_shutdown() -> (
+    None
+):
+    remote_shutdown = FakeRemoteShutdown()
+    client, _transport = request_client(
+        FakeVlcClient(), remote_shutdown=remote_shutdown
+    )
+
+    async with client:
+        missing = await client.post("/api/v1/session/end")
+        ended = await client.post("/api/v1/session/end", headers=authorization())
+
+    assert missing.status_code == 401
+    assert ended.status_code == 202
+    assert ended.json() == {"status": "shutting_down"}
+    assert remote_shutdown.requested is True
 
 
 async def test_artwork_lookup_is_authenticated_and_same_origin() -> None:

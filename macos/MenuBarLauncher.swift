@@ -162,6 +162,12 @@ final class MenuBarLauncher: NSObject, NSApplicationDelegate {
                     self?.serviceProcess = nil
                     self?.pairingURL = nil
                     self?.isStarting = false
+                    if process.terminationStatus == 75 {
+                        self?.qrWindow?.close()
+                        self?.quitVLC()
+                        NSApp.terminate(nil)
+                        return
+                    }
                     if process.terminationStatus == 12 {
                         self?.startupError = LauncherError.vlcAlreadyRunning
                     }

@@ -444,6 +444,29 @@ describe("mobile remote", () => {
     expect(screen.queryByRole("dialog", { name: "Remote settings" })).not.toBeInTheDocument();
   });
 
+  it("ends the Mac remote from settings and leaves the phone in a closed state", async () => {
+    window.localStorage.setItem("mac-vlc-remote.access-token.v1", TOKEN);
+    const fetchMock = vi.fn<typeof fetch>().mockImplementation((input) => {
+      if (requestUrl(input).startsWith("/api/v1/artwork")) {
+        return Promise.resolve(response({ imageData: null }));
+      }
+      if (requestUrl(input) === "/api/v1/session/end") {
+        return Promise.resolve(response({ status: "shutting_down" }, 202));
+      }
+      return Promise.resolve(response(pausedStatus));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<App />);
+    fireEvent.click(await screen.findByRole("button", { name: "Open remote settings" }));
+    fireEvent.click(screen.getByRole("button", { name: "End VLC Remote" }));
+    expect(screen.getByRole("dialog", { name: "End VLC Remote" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "End everything" }));
+
+    expect(await screen.findByRole("heading", { name: "Everything is closed." })).toBeInTheDocument();
+    expect(fetchMock.mock.calls.map(([url]) => requestUrl(url))).toContain("/api/v1/session/end");
+  });
+
   it("opens the Desktop Movies library from settings and plays a listed movie", async () => {
     window.localStorage.setItem("mac-vlc-remote.access-token.v1", TOKEN);
     const libraryMovie = {

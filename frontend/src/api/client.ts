@@ -42,6 +42,7 @@ export interface RemoteApi {
   selectSubtitleTrack(trackId: string, signal?: AbortSignal): Promise<VlcStatus>;
   nextItem(signal?: AbortSignal): Promise<VlcStatus>;
   previousItem(signal?: AbortSignal): Promise<VlcStatus>;
+  endSession(signal?: AbortSignal): Promise<void>;
 }
 
 type FetchImplementation = typeof fetch;
@@ -117,6 +118,7 @@ export function createRemoteApi(
     selectSubtitleTrack: (trackId, signal) =>
       post("/tracks/subtitle", { trackId }, signal),
     nextItem: (signal) => post("/playback/next", undefined, signal),
-    previousItem: (signal) => post("/playback/previous", undefined, signal)
+    previousItem: (signal) => post("/playback/previous", undefined, signal),
+    endSession: (signal) => post("/session/end", undefined, signal).then(() => undefined)
   };
 }

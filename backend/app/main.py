@@ -33,6 +33,10 @@ from backend.app.services.playback_resume import (
     PlaybackResumeStore,
     PlaybackResumeTracker,
 )
+from backend.app.services.remote_shutdown import (
+    ProcessRemoteShutdown,
+    RemoteShutdownProtocol,
+)
 from backend.app.services.status_coordinator import StatusCoordinator
 from backend.app.services.vlc_client import (
     HttpxVlcClient,
@@ -54,6 +58,7 @@ def create_app(
     artwork_lookup: MovieArtworkLookupProtocol | None = None,
     movie_library: MovieLibraryProtocol | None = None,
     playback_resume_tracker: PlaybackResumeTracker | None = None,
+    remote_shutdown: RemoteShutdownProtocol | None = None,
 ) -> FastAPI:
     """Build an application instance suitable for production and tests."""
 
@@ -80,6 +85,7 @@ def create_app(
     active_movie_library = movie_library or MovieLibrary(
         active_settings.movie_library_directory, active_resume_store
     )
+    active_remote_shutdown = remote_shutdown or ProcessRemoteShutdown()
 
     @asynccontextmanager
     async def lifespan(_application: FastAPI) -> AsyncIterator[None]:
@@ -103,6 +109,7 @@ def create_app(
     application.state.artwork_lookup = active_artwork_lookup
     application.state.movie_library = active_movie_library
     application.state.playback_resume_tracker = active_resume_tracker
+    application.state.remote_shutdown = active_remote_shutdown
 
     application.add_middleware(
         TrustedHostMiddleware,

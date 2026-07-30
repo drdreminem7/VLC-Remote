@@ -21,7 +21,9 @@ export interface RemoteState {
   message: string;
   pendingAction: string | null;
   token: string | null;
+  sessionEnded: boolean;
   forgetPairing(): void;
+  endSession(): Promise<boolean>;
   getLibrary: (signal?: AbortSignal) => Promise<MovieLibraryResponse | null>;
   playLibraryMovie(movieId: string, resume: boolean): Promise<VlcStatus | null>;
   togglePlayback(): Promise<void>;
@@ -82,6 +84,7 @@ export function useRemote(): RemoteState {
     describeConnection(token === null ? "unauthenticated" : "connecting")
   );
   const [pendingAction, setPendingAction] = useState<string | null>(null);
+  const [sessionEnded, setSessionEnded] = useState(false);
   const commandControllerRef = useRef<AbortController | null>(null);
   const commandBusyRef = useRef(false);
   const statusRef = useRef<VlcStatus | null>(null);
@@ -99,7 +102,7 @@ export function useRemote(): RemoteState {
   }, []);
 
   useEffect(() => {
-    if (api === null) {
+    if (api === null || sessionEnded) {
       return undefined;
     }
 
@@ -225,7 +228,7 @@ export function useRemote(): RemoteState {
       window.removeEventListener("offline", handleOffline);
       document.removeEventListener("visibilitychange", restartPolling);
     };
-  }, [api, applyStatus]);
+  }, [api, applyStatus, sessionEnded]);
 
   useEffect(
     () => () => {
@@ -294,6 +297,42 @@ export function useRemote(): RemoteState {
     setMessage(describeConnection("unauthenticated"));
   }, []);
 
+  const endSession = useCallback(async (): Promise<boolean> => {
+    if (api === null || commandBusyRef.current || !navigator.onLine) {
+      return false;
+    }
+
+    commandControllerRef.current?.abort();
+    const controller = new AbortController();
+    commandControllerRef.current = controller;
+    commandBusyRef.current = true;
+    setPendingAction("end-session");
+
+    try {
+      await api.endSession(controller.signal);
+      setSessionEnded(true);
+      return true;
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        return false;
+      }
+      const nextConnection = connectionFromError(error);
+      setConnection(nextConnection);
+      setMessage(
+        error instanceof RemoteApiError
+          ? error.message
+          : describeConnection(nextConnection)
+      );
+      return false;
+    } finally {
+      if (commandControllerRef.current === controller) {
+        commandControllerRef.current = null;
+        commandBusyRef.current = false;
+        setPendingAction(null);
+      }
+    }
+  }, [api]);
+
   const getLibrary = useCallback(
     async (signal?: AbortSignal): Promise<MovieLibraryResponse | null> => {
       if (api === null || !navigator.onLine) {
@@ -330,7 +369,9 @@ export function useRemote(): RemoteState {
     message,
     pendingAction,
     token,
+    sessionEnded,
     forgetPairing,
+    endSession,
     getLibrary,
     playLibraryMovie: (movieId, resume) =>
       runCommand("library-play", (activeApi, signal) =>

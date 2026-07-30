@@ -777,6 +777,64 @@ svg {
     flex: 1;
 }
 
+.settings-dialog__actions .end-session-button {
+    flex-basis: 100%;
+}
+
+.end-session-button {
+    min-height: 2.75rem;
+    padding: var(--space-xs) var(--space-sm);
+    border: 1px solid color-mix(in oklab, var(--danger), transparent 35%);
+    border-radius: var(--radius-sm);
+    color: var(--danger);
+    font-size: 0.8125rem;
+    font-weight: 700;
+}
+
+.remote--ended {
+    display: grid;
+    min-height: 100dvh;
+    place-items: center;
+    padding: var(--space-xl);
+}
+
+.remote-ended__content {
+    display: grid;
+    max-width: 19rem;
+    justify-items: center;
+    gap: var(--space-md);
+    text-align: center;
+}
+
+.remote-ended__mark {
+    display: grid;
+    width: 3.5rem;
+    aspect-ratio: 1;
+    place-items: center;
+    border: 1px solid var(--line);
+    border-radius: 50%;
+    color: var(--accent);
+    font-family: var(--font-display);
+    font-size: 1.8rem;
+    font-weight: 700;
+}
+
+.remote-ended__content h1,
+.remote-ended__content p {
+    margin: 0;
+}
+
+.remote-ended__content h1 {
+    font-family: var(--font-display);
+    font-size: 2rem;
+    line-height: 0.95;
+}
+
+.remote-ended__content > p:not(.eyebrow) {
+    color: var(--ink-muted);
+    line-height: 1.5;
+}
+
 .settings-dialog .advanced-controls,
 .settings-dialog .track-controls {
     margin-top: calc(var(--space-sm) * -1);

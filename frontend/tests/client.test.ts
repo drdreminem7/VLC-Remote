@@ -58,6 +58,20 @@ describe("remote API client", () => {
     expect(fetchMock.mock.calls[0]?.[1]?.body).toBe('{"percent":180}');
   });
 
+  it("requests a complete remote shutdown through the paired local API", async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify({ status: "shutting_down" }), { status: 202 })
+    );
+    const api = createRemoteApi(TOKEN, fetchMock);
+
+    await api.endSession();
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/v1/session/end",
+      expect.objectContaining({ method: "POST", credentials: "same-origin" })
+    );
+  });
+
   it("lists and plays only opaque IDs from the local movie library", async () => {
     const movieId = "d".repeat(24);
     const fetchMock = vi

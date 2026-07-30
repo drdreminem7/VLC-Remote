@@ -5,10 +5,12 @@ from typing import Annotated
 from fastapi import APIRouter, Depends
 
 from backend.app.dependencies import (
+    get_remote_shutdown,
     get_status_coordinator,
     get_vlc_client,
     require_access_token,
 )
+from backend.app.models.api import RemoteShutdownResponse
 from backend.app.models.commands import (
     AbsoluteSeekRequest,
     MuteRequest,
@@ -18,6 +20,7 @@ from backend.app.models.commands import (
     VolumeRequest,
 )
 from backend.app.models.playback import VlcStatus
+from backend.app.services.remote_shutdown import RemoteShutdownProtocol
 from backend.app.services.status_coordinator import StatusCoordinator
 from backend.app.services.vlc_client import VlcClientProtocol
 
@@ -33,6 +36,16 @@ def remember(
 ) -> VlcStatus:
     coordinator.remember(status)
     return status
+
+
+@router.post("/session/end", response_model=RemoteShutdownResponse, status_code=202)
+async def end_remote_session(
+    remote_shutdown: Annotated[RemoteShutdownProtocol, Depends(get_remote_shutdown)],
+) -> RemoteShutdownResponse:
+    """Ask the native launcher to close VLC, its service, and itself."""
+
+    await remote_shutdown.request()
+    return RemoteShutdownResponse()
 
 
 @router.post("/playback/toggle", response_model=VlcStatus)
