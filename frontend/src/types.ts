@@ -55,6 +55,7 @@ export interface VlcStatus {
     fullscreen: boolean;
     playlistNavigation: boolean;
   };
+  fullscreen: boolean;
   updatedAt: string;
 }
 

@@ -37,6 +37,14 @@ def test_playing_fixture_is_normalized_without_raw_vlc_fields() -> None:
     assert status.capabilities.subtitle_track_selection is False
     assert status.capabilities.fullscreen is False
     assert status.capabilities.playlist_navigation is False
+    assert status.fullscreen is False
+
+
+def test_fullscreen_status_is_normalized_from_vlc_output() -> None:
+    raw = load_fixture("status_playing.json")
+    raw["fullscreen"] = 1
+
+    assert parse_vlc_status(raw).fullscreen is True
 
 
 def test_empty_media_fixture_uses_conservative_defaults() -> None:

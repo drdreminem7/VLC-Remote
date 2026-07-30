@@ -13,7 +13,8 @@ scan one QR code, and control VLC from the same home network.
 - Controls play/pause, ±10-second seek, timeline seek, volume (0–200), mute,
   and playback speed.
 - Shows a movie poster while media is playing, using TMDB when configured.
-- Lets a paired phone choose a movie from `Desktop/Movies`.
+- Lets a paired phone choose a movie from `Desktop/Movies`, loading local
+  sidecar subtitles and entering fullscreen.
 - Runs as an installable phone web app and an optional Mac Dock app.
 - Keeps VLC's HTTP password on the Mac. The phone never receives it.
 
@@ -60,12 +61,14 @@ make pairing
 ## Movie library
 
 Put movies anywhere inside `~/Desktop/Movies`; each movie may live in its own
-named folder. Press and hold the poster/touch surface for about 1.2 seconds to
-open the picker, then tap a poster to play it. The same picker is available in
+named folder. Tap the poster/touch surface to open the picker, then tap a poster
+to play it. The same picker is available in
 **Settings → Movie library**.
 
 The phone receives only opaque IDs and display metadata. The Mac re-scans and
 validates each selection inside `Desktop/Movies` before VLC is asked to open it.
+Compatible subtitle files directly beside the selected movie (`.srt`, `.ass`,
+`.vtt`, and similar formats) are added to VLC automatically.
 
 ## Mac app
 

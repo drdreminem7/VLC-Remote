@@ -102,6 +102,8 @@ async def test_library_uses_opaque_ids_and_only_plays_listed_movies(
 ) -> None:
     movie_path = tmp_path / "The.Quiet.Film.2024.mkv"
     movie_path.touch()
+    subtitle_path = tmp_path / "The.Quiet.Film.2024.en.srt"
+    subtitle_path.touch()
     fake = FakeVlcClient()
     client, _transport = request_client(fake, movie_library=MovieLibrary(tmp_path))
 
@@ -126,7 +128,12 @@ async def test_library_uses_opaque_ids_and_only_plays_listed_movies(
     assert movie["title"] == "The Quiet Film 2024"
     assert played.status_code == 200
     assert played.json()["state"] == "playing"
-    assert fake.commands == [("play_media", "The.Quiet.Film.2024.mkv")]
+    assert fake.commands == [
+        ("play_media", "The.Quiet.Film.2024.mkv"),
+        ("add_subtitle", "The.Quiet.Film.2024.en.srt"),
+        ("fullscreen", None),
+    ]
+    assert played.json()["fullscreen"] is True
     assert stale.status_code == 404
     assert "tmp" not in stale.text
 

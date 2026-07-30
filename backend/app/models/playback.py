@@ -88,4 +88,5 @@ class VlcStatus(PlaybackModel):
     playback_rate: float = Field(gt=0, allow_inf_nan=False)
     tracks: Tracks = Tracks()
     capabilities: PlaybackCapabilities
+    fullscreen: bool = False
     updated_at: datetime

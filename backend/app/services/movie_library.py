@@ -33,7 +33,22 @@ SUPPORTED_MOVIE_SUFFIXES = frozenset(
         ".wmv",
     }
 )
+SUPPORTED_SUBTITLE_SUFFIXES = frozenset(
+    {
+        ".ass",
+        ".dfxp",
+        ".idx",
+        ".smi",
+        ".srt",
+        ".ssa",
+        ".sub",
+        ".sup",
+        ".ttml",
+        ".vtt",
+    }
+)
 MAX_LIBRARY_MOVIES = 240
+MAX_MOVIE_SUBTITLES = 24
 
 
 class MovieLibraryProtocol(Protocol):
@@ -42,6 +57,8 @@ class MovieLibraryProtocol(Protocol):
     async def list_movies(self) -> tuple[LibraryMovie, ...]: ...
 
     async def resolve_movie(self, movie_id: str) -> Path | None: ...
+
+    async def subtitles_for(self, movie_path: Path) -> tuple[Path, ...]: ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -65,6 +82,11 @@ class MovieLibrary:
             if entry.movie.id == movie_id:
                 return entry.path
         return None
+
+    async def subtitles_for(self, movie_path: Path) -> tuple[Path, ...]:
+        """Return only safe external subtitle files beside a selected movie."""
+
+        return await asyncio.to_thread(self._subtitle_paths, movie_path)
 
     def _entries(self) -> tuple[_LibraryEntry, ...]:
         try:
@@ -106,6 +128,38 @@ class MovieLibrary:
             return ()
 
         return tuple(sorted(entries, key=lambda entry: entry.movie.title.casefold()))
+
+    def _subtitle_paths(self, movie_path: Path) -> tuple[Path, ...]:
+        try:
+            root = self._directory.resolve(strict=True)
+            resolved_movie = movie_path.resolve(strict=True)
+            resolved_movie.relative_to(root)
+        except (OSError, ValueError):
+            return ()
+
+        subtitles: list[Path] = []
+        try:
+            for candidate in resolved_movie.parent.iterdir():
+                if len(subtitles) >= MAX_MOVIE_SUBTITLES:
+                    break
+                if candidate.suffix.casefold() not in SUPPORTED_SUBTITLE_SUFFIXES:
+                    continue
+                try:
+                    resolved = candidate.resolve(strict=True)
+                    relative = resolved.relative_to(root)
+                except (OSError, ValueError):
+                    continue
+                if (
+                    not resolved.is_file()
+                    or resolved.parent != resolved_movie.parent
+                    or any(part.startswith(".") for part in relative.parts)
+                ):
+                    continue
+                subtitles.append(resolved)
+        except OSError:
+            return ()
+
+        return tuple(sorted(subtitles, key=lambda path: path.name.casefold()))
 
 
 def _movie_id(relative_path: Path) -> str:

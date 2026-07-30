@@ -100,15 +100,22 @@ class FakeVlcClient:
         self.commands.append(("stop", None))
         return self._updated(state=PlaybackState.STOPPED)
 
-    async def play_media(self, file_path: Path) -> VlcStatus:
+    async def play_media(
+        self, file_path: Path, subtitle_paths: tuple[Path, ...] = ()
+    ) -> VlcStatus:
         self._raise_failure()
         self.commands.append(("play_media", file_path.name))
+        self.commands.extend(
+            ("add_subtitle", subtitle_path.name) for subtitle_path in subtitle_paths
+        )
+        self.commands.append(("fullscreen", None))
         return self._updated(
             state=PlaybackState.PLAYING,
             media=MediaInformation(
                 title=file_path.stem,
                 filename=file_path.name,
             ),
+            fullscreen=True,
         )
 
     async def seek_relative(self, seconds: int) -> VlcStatus:

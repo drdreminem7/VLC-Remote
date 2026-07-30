@@ -12,6 +12,26 @@ TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p/w500"
 WIKIMEDIA_API = "https://en.wikipedia.org/w/api.php"
 MAX_IMAGE_BYTES = 1_500_000
 YEAR_TOKEN = re.compile(r"(?<!\d)(?:19\d{2}|20\d{2})(?!\d)")
+ROMAN_SEQUELS = {
+    "ii": "2",
+    "iii": "3",
+    "iv": "4",
+    "v": "5",
+    "vi": "6",
+    "vii": "7",
+    "viii": "8",
+    "ix": "9",
+    "x": "10",
+}
+# Some releases use a local sequel number rather than TMDB's primary title.
+# Keep these aliases deliberately small and specific; fuzzy matching must not turn
+# an unrelated sequel into a popular reboot or prequel.
+TMDB_TITLE_ALIASES = {
+    "lion king 2": "The Lion King II: Simba's Pride",
+    "the lion king 2": "The Lion King II: Simba's Pride",
+    "lion king 3": "The Lion King 1½",
+    "the lion king 3": "The Lion King 1½",
+}
 
 
 class MovieArtworkLookupProtocol(Protocol):
@@ -31,6 +51,20 @@ def _normalize_title(value: str) -> str:
     )
 
 
+def _canonical_title(value: str) -> str:
+    """Normalize common Roman sequel markers without losing title words."""
+
+    return " ".join(
+        ROMAN_SEQUELS.get(token, token) for token in _normalize_title(value).split()
+    )
+
+
+def _tmdb_title_alias(title: str) -> str:
+    """Return a known TMDB primary title for a common local release label."""
+
+    return TMDB_TITLE_ALIASES.get(_normalize_title(title), title)
+
+
 def _tmdb_search_terms(title: str) -> tuple[str, str | None]:
     """Extract a filename-style release year without damaging numbered titles."""
 
@@ -38,8 +72,31 @@ def _tmdb_search_terms(title: str) -> tuple[str, str | None]:
     for match in reversed(tuple(YEAR_TOKEN.finditer(sanitized_title))):
         candidate_title = sanitized_title[: match.start()].strip(" -–—()[]{}")
         if _normalize_title(candidate_title):
-            return candidate_title, match.group(0)
-    return sanitized_title, None
+            return _tmdb_title_alias(candidate_title), match.group(0)
+    return _tmdb_title_alias(sanitized_title), None
+
+
+def _title_match_score(query: str, candidate: str) -> int:
+    """Prefer exact sequel titles over popular entries sharing only a base title."""
+
+    normalized_query = _normalize_title(query)
+    normalized_candidate = _normalize_title(candidate)
+    canonical_query = _canonical_title(query)
+    canonical_candidate = _canonical_title(candidate)
+    if (
+        normalized_candidate == normalized_query
+        or canonical_candidate == canonical_query
+    ):
+        return 4
+    if canonical_candidate.startswith(f"{canonical_query} "):
+        return 3
+    if canonical_query in canonical_candidate:
+        return 2
+
+    query_has_sequel_number = any(token.isdigit() for token in canonical_query.split())
+    if not query_has_sequel_number and canonical_candidate in canonical_query:
+        return 1
+    return 0
 
 
 def _tmdb_poster_source(payload: object, query: str) -> str | None:
@@ -49,7 +106,6 @@ def _tmdb_poster_source(payload: object, query: str) -> str | None:
     if not isinstance(results, list):
         return None
 
-    normalized_query = _normalize_title(query)
     candidates: list[tuple[int, float, int, str]] = []
     for index, result in enumerate(results):
         if not isinstance(result, Mapping):
@@ -60,15 +116,9 @@ def _tmdb_poster_source(payload: object, query: str) -> str | None:
             continue
         if not isinstance(title, str):
             title = ""
-        normalized_title = _normalize_title(title)
-        if normalized_title == normalized_query:
-            match_score = 2
-        elif (
-            normalized_query in normalized_title or normalized_title in normalized_query
-        ):
-            match_score = 1
-        else:
-            match_score = 0
+        match_score = _title_match_score(query, title)
+        if match_score == 0:
+            continue
         popularity_value = result.get("popularity")
         popularity = (
             float(popularity_value)

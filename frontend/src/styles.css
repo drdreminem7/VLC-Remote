@@ -313,6 +313,7 @@ svg {
         inset 0 -1.25rem 2.5rem color-mix(in oklch, var(--paper-deep) 30%, transparent),
         0 1rem 2rem var(--shadow-ambient);
     isolation: isolate;
+    touch-action: manipulation;
     animation: enter var(--duration-enter) 70ms var(--ease-out-expo) both;
 }
 
@@ -338,6 +339,8 @@ svg {
     overflow: hidden;
     border-radius: inherit;
     background: var(--surface-raised);
+    -webkit-touch-callout: none;
+    user-select: none;
 }
 
 .touch-surface--with-artwork {
@@ -348,25 +351,12 @@ svg {
     aspect-ratio: 2 / 3;
 }
 
-.touch-surface__artwork::after {
-    position: absolute;
-    z-index: 2;
-    inset: 0;
-    background: linear-gradient(
-        180deg,
-        color-mix(in oklch, var(--paper-deep) 24%, transparent),
-        color-mix(in oklch, var(--paper-deep) 42%, transparent)
-    );
-    content: "";
-    pointer-events: none;
-}
-
 .touch-surface__artwork img {
     display: block;
     width: 100%;
     height: 100%;
     object-fit: cover;
-    filter: saturate(0.76) contrast(0.94);
+    -webkit-user-drag: none;
 }
 
 .touch-surface__content {

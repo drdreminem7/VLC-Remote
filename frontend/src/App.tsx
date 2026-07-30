@@ -4,7 +4,7 @@ import {
   useMemo,
   useRef,
   useState,
-  type PointerEvent as ReactPointerEvent
+  type MouseEvent as ReactMouseEvent
 } from "react";
 
 import { useRemote } from "./hooks/useRemote";
@@ -16,7 +16,6 @@ const DEFAULT_RATES = [0.5, 0.75, 1, 1.25, 1.5, 2];
 const VIDEO_FILE_EXTENSION =
   /\.(?:3g2|3gp|asf|avi|divx|flv|m2ts|m4v|mkv|mov|mp4|mpeg|mpg|mts|ogm|ogv|ts|vob|webm|wmv)$/i;
 const SEEK_SETTLE_TOLERANCE_SECONDS = 3;
-const LIBRARY_HOLD_MS = 1200;
 const INITIAL_LIBRARY_MOVIES = 18;
 
 function normalizePlaybackRate(rate: number): number {
@@ -245,7 +244,6 @@ export default function App() {
   const [libraryPlayingId, setLibraryPlayingId] = useState<string | null>(null);
   const seekingRef = useRef(false);
   const seekPreviewRef = useRef<number | null>(null);
-  const libraryHoldTimerRef = useRef<number | undefined>(undefined);
 
   const status = remote.status;
   const mediaSource = status?.media.title || status?.media.filename || "";
@@ -300,36 +298,21 @@ export default function App() {
 
   const posterUrl = poster?.title === posterTitle ? poster.url : null;
 
-  const clearLibraryHold = useCallback(() => {
-    if (libraryHoldTimerRef.current !== undefined) {
-      window.clearTimeout(libraryHoldTimerRef.current);
-      libraryHoldTimerRef.current = undefined;
-    }
-  }, []);
-
   const openLibrary = useCallback(() => {
-    clearLibraryHold();
     setSettingsOpen(false);
     setLibraryMovies(null);
     setLibraryLoading(true);
     setLibraryError(null);
     setLibraryVisibleCount(INITIAL_LIBRARY_MOVIES);
     setLibraryOpen(true);
-  }, [clearLibraryHold]);
+  }, []);
 
-  const beginLibraryHold = (event: ReactPointerEvent<HTMLElement>) => {
-    const target = event.target as HTMLElement;
-    if (target.closest(".timeline")) {
+  const handleSurfaceClick = (event: ReactMouseEvent<HTMLElement>) => {
+    if (event.target instanceof Element && event.target.closest(".timeline")) {
       return;
     }
-    clearLibraryHold();
-    libraryHoldTimerRef.current = window.setTimeout(() => {
-      libraryHoldTimerRef.current = undefined;
-      openLibrary();
-    }, LIBRARY_HOLD_MS);
+    openLibrary();
   };
-
-  useEffect(() => clearLibraryHold, [clearLibraryHold]);
 
   useEffect(() => {
     if (!libraryOpen) {
@@ -449,22 +432,15 @@ export default function App() {
         <section
           aria-label={hasMedia ? "Current playback" : "Playback status"}
           className={`touch-surface${posterUrl ? " touch-surface--with-artwork" : ""}`}
+          onClick={handleSurfaceClick}
           onContextMenu={(event) => event.preventDefault()}
-          onPointerCancel={clearLibraryHold}
-          onPointerDown={beginLibraryHold}
-          onPointerLeave={clearLibraryHold}
-          onPointerMove={(event) => {
-            if ((event.target as HTMLElement).closest(".timeline")) {
-              clearLibraryHold();
-            }
-          }}
-          onPointerUp={clearLibraryHold}
         >
           <div className="touch-surface__texture" aria-hidden="true" />
           {posterUrl ? (
             <div className="touch-surface__artwork" aria-hidden="true">
               <img
                 alt=""
+                draggable={false}
                 loading="lazy"
                 onError={() => setPoster(null)}
                 src={posterUrl}

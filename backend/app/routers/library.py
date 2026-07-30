@@ -50,4 +50,5 @@ async def play_movie(
             message="That movie is no longer available in the local library.",
             retryable=False,
         )
-    return remember(await vlc_client.play_media(file_path), coordinator)
+    subtitle_paths = await movie_library.subtitles_for(file_path)
+    return remember(await vlc_client.play_media(file_path, subtitle_paths), coordinator)

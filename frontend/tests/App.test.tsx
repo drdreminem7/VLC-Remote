@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import App from "../src/App";
@@ -147,7 +147,7 @@ describe("mobile remote", () => {
     });
   });
 
-  it("opens the Desktop Movies library after a sustained press on the touch surface", async () => {
+  it("opens the Desktop Movies library with one touch on the touch surface", async () => {
     window.localStorage.setItem("mac-vlc-remote.access-token.v1", TOKEN);
     const movies = {
       movies: [
@@ -164,14 +164,12 @@ describe("mobile remote", () => {
     render(<App />);
     const touchSurface = await screen.findByRole("region", { name: "Current playback" });
 
-    vi.useFakeTimers();
-    fireEvent.pointerDown(touchSurface);
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(1200);
-    });
+    fireEvent.click(touchSurface, { clientX: 48, clientY: 64 });
 
     expect(screen.getByRole("dialog", { name: "Movie library" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Play The Quiet Film" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("button", { name: "Play The Quiet Film" })
+    ).toBeInTheDocument();
     expect(apiUrls(fetchMock)).toEqual(["/api/v1/status", "/api/v1/library"]);
   });
 

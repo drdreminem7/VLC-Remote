@@ -56,6 +56,16 @@ def _text(value: object) -> str | None:
     return stripped or None
 
 
+def _boolean(value: object) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, int | float) and not isinstance(value, bool):
+        return value != 0
+    if isinstance(value, str):
+        return value.casefold() in {"1", "true", "yes"}
+    return False
+
+
 def parse_vlc_status(raw: Mapping[str, object]) -> VlcStatus:
     """Normalize one `/requests/status.json` response."""
 
@@ -113,5 +123,6 @@ def parse_vlc_status(raw: Mapping[str, object]) -> VlcStatus:
             volume=raw_volume is not None,
             rate=raw_rate is not None,
         ),
+        fullscreen=_boolean(raw.get("fullscreen")),
         updated_at=datetime.now(UTC),
     )

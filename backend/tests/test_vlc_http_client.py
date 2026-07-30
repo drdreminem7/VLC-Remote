@@ -24,10 +24,16 @@ def fixture_payload() -> dict[str, object]:
 
 async def test_client_uses_basic_auth_and_url_encoded_fixed_parameters() -> None:
     requests: list[httpx.Request] = []
+    fullscreen = False
 
     async def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal fullscreen
         requests.append(request)
-        return httpx.Response(200, json=fixture_payload())
+        if request.url.params.get("command") == "fullscreen":
+            fullscreen = True
+        payload = fixture_payload()
+        payload["fullscreen"] = int(fullscreen)
+        return httpx.Response(200, json=payload)
 
     client = HttpxVlcClient(
         base_url="http://127.0.0.1:8080",
@@ -39,11 +45,17 @@ async def test_client_uses_basic_auth_and_url_encoded_fixed_parameters() -> None
         await client.set_volume(70)
         await client.set_volume(200)
         await client.set_rate(1.25)
-        await client.play_media(Path("/Users/example/Desktop/Movies/Film One.mkv"))
+        await client.play_media(
+            Path("/Users/example/Desktop/Movies/Film One.mkv"),
+            (Path("/Users/example/Desktop/Movies/Film One.en.srt"),),
+        )
     finally:
         await client.aclose()
 
     assert [request.url.path for request in requests] == [
+        "/requests/status.json",
+        "/requests/status.json",
+        "/requests/status.json",
         "/requests/status.json",
         "/requests/status.json",
         "/requests/status.json",
@@ -58,6 +70,12 @@ async def test_client_uses_basic_auth_and_url_encoded_fixed_parameters() -> None
         "command": "in_play",
         "input": "file:///Users/example/Desktop/Movies/Film%20One.mkv",
     }
+    assert dict(requests[5].url.params) == {
+        "command": "addsubtitle",
+        "val": "file:///Users/example/Desktop/Movies/Film%20One.en.srt",
+    }
+    assert dict(requests[6].url.params) == {}
+    assert dict(requests[7].url.params) == {"command": "fullscreen"}
     assert requests[0].headers["Authorization"].startswith("Basic ")
     assert "server-only-secret" not in str(requests[0].url)
 

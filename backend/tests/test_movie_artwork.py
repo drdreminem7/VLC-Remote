@@ -1,7 +1,11 @@
 import httpx
 import pytest
 
-from backend.app.services.movie_artwork import MovieArtworkLookup, _tmdb_search_terms
+from backend.app.services.movie_artwork import (
+    MovieArtworkLookup,
+    _tmdb_poster_source,
+    _tmdb_search_terms,
+)
 
 
 @pytest.mark.parametrize(
@@ -17,6 +21,48 @@ def test_tmdb_search_terms_handles_parenthesized_and_filename_years(
     title: str, expected: tuple[str, str | None]
 ) -> None:
     assert _tmdb_search_terms(title) == expected
+
+
+@pytest.mark.parametrize(
+    ("title", "expected"),
+    [
+        ("The Lion King 2 (1998)", ("The Lion King II: Simba's Pride", "1998")),
+        ("The.Lion.King.3.2004.1080p", ("The Lion King 1½", "2004")),
+    ],
+)
+def test_tmdb_search_terms_uses_primary_titles_for_lion_king_sequels(
+    title: str, expected: tuple[str, str | None]
+) -> None:
+    assert _tmdb_search_terms(title) == expected
+
+
+def test_tmdb_poster_source_prefers_a_numbered_sequel_over_popular_base_titles() -> (
+    None
+):
+    payload = {
+        "results": [
+            {
+                "title": "The Lion King",
+                "poster_path": "/live-action.jpg",
+                "popularity": 200.0,
+            },
+            {
+                "title": "Mufasa: The Lion King",
+                "poster_path": "/mufasa.jpg",
+                "popularity": 180.0,
+            },
+            {
+                "title": "The Lion King II: Simba's Pride",
+                "poster_path": "/simba-pride.jpg",
+                "popularity": 9.0,
+            },
+        ]
+    }
+
+    assert (
+        _tmdb_poster_source(payload, "The Lion King II: Simba's Pride")
+        == "https://image.tmdb.org/t/p/w500/simba-pride.jpg"
+    )
 
 
 async def test_lookup_prefers_tmdb_and_sends_bearer_token() -> None:

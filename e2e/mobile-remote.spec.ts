@@ -232,7 +232,7 @@ test("forgets an authentication-rejected pairing token", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Pair this phone." })).toBeVisible();
 });
 
-test("opens the movie library with a long press and plays a listed movie", async ({ page }) => {
+test("opens the movie library with one touch and plays a listed movie", async ({ page }) => {
   const movie = {
     id: "a".repeat(24),
     title: "The Quiet Film",
@@ -256,14 +256,7 @@ test("opens the movie library with a long press and plays a listed movie", async
 
   await page.goto(`/#token=${TOKEN}`);
   const touchSurface = page.locator(".touch-surface");
-  const box = await touchSurface.boundingBox();
-  if (box === null) {
-    throw new Error("Could not measure touch surface");
-  }
-  await page.mouse.move(box.x + 16, box.y + 16);
-  await page.mouse.down();
-  await page.waitForTimeout(1250);
-  await page.mouse.up();
+  await touchSurface.tap();
 
   await expect(page.getByRole("dialog", { name: "Movie library" })).toBeVisible();
   await page.getByRole("button", { name: "Play The Quiet Film" }).click();

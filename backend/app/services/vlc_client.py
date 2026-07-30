@@ -17,6 +17,12 @@ from backend.app.models.playback import VlcStatus
 from backend.app.services.vlc_parser import parse_vlc_status
 from backend.app.services.vlc_volume import visible_percent_to_raw_volume
 
+PLAYBACK_READY_ATTEMPTS = 10
+PLAYBACK_READY_DELAY_SECONDS = 0.1
+FULLSCREEN_READY_DELAY_SECONDS = 0.35
+FULLSCREEN_CONFIRMATION_ATTEMPTS = 5
+FULLSCREEN_CONFIRMATION_DELAY_SECONDS = 0.1
+
 
 class VlcClientProtocol(Protocol):
     """Fixed operations exposed by the backend's VLC boundary."""
@@ -33,7 +39,9 @@ class VlcClientProtocol(Protocol):
 
     async def stop(self) -> VlcStatus: ...
 
-    async def play_media(self, file_path: Path) -> VlcStatus: ...
+    async def play_media(
+        self, file_path: Path, subtitle_paths: tuple[Path, ...] = ()
+    ) -> VlcStatus: ...
 
     async def seek_relative(self, seconds: int) -> VlcStatus: ...
 
@@ -88,8 +96,10 @@ class UnconfiguredVlcClient:
     async def stop(self) -> VlcStatus:
         return await self._unavailable()
 
-    async def play_media(self, file_path: Path) -> VlcStatus:
-        del file_path
+    async def play_media(
+        self, file_path: Path, subtitle_paths: tuple[Path, ...] = ()
+    ) -> VlcStatus:
+        del file_path, subtitle_paths
         return await self._unavailable()
 
     async def seek_relative(self, seconds: int) -> VlcStatus:
@@ -232,14 +242,54 @@ class HttpxVlcClient:
     async def stop(self) -> VlcStatus:
         return await self._request_status(command="pl_stop")
 
-    async def play_media(self, file_path: Path) -> VlcStatus:
-        """Play a server-validated local file through VLC's fixed input command."""
+    async def play_media(
+        self, file_path: Path, subtitle_paths: tuple[Path, ...] = ()
+    ) -> VlcStatus:
+        """Play a validated movie, load local subtitles, and enter fullscreen."""
 
-        return await self._request_status(
+        status = await self._request_status(
             command="in_play",
             value_name="input",
             value=file_path.as_uri(),
         )
+        for _ in range(PLAYBACK_READY_ATTEMPTS):
+            if status.state.value not in {"opening", "buffering"}:
+                break
+            await asyncio.sleep(PLAYBACK_READY_DELAY_SECONDS)
+            status = await self.get_status()
+
+        for subtitle_path in subtitle_paths:
+            try:
+                status = await self._request_status(
+                    command="addsubtitle",
+                    value_name="val",
+                    value=subtitle_path.as_uri(),
+                )
+            except VlcCommandFailed:
+                continue
+
+        return await self._ensure_fullscreen(status)
+
+    async def _ensure_fullscreen(self, status: VlcStatus) -> VlcStatus:
+        """Enter fullscreen after VLC has had time to create its video output."""
+
+        if status.fullscreen:
+            return status
+        await asyncio.sleep(FULLSCREEN_READY_DELAY_SECONDS)
+        status = await self.get_status()
+        if status.fullscreen:
+            return status
+
+        for attempt in range(2):
+            status = await self._request_status(command="fullscreen")
+            for _ in range(FULLSCREEN_CONFIRMATION_ATTEMPTS):
+                if status.fullscreen:
+                    return status
+                await asyncio.sleep(FULLSCREEN_CONFIRMATION_DELAY_SECONDS)
+                status = await self.get_status()
+            if attempt == 0:
+                await asyncio.sleep(FULLSCREEN_READY_DELAY_SECONDS)
+        return status
 
     async def seek_relative(self, seconds: int) -> VlcStatus:
         value = f"{seconds:+d}S"
