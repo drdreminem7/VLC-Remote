@@ -542,9 +542,11 @@ describe("mobile remote", () => {
     expect(await screen.findByRole("dialog", { name: "Resume movie" })).toHaveTextContent(
       "Resume from 15:00?"
     );
+    expect(fetchMock.mock.calls.map(([url]) => requestUrl(url))).not.toContain("/api/v1/library/play");
     fireEvent.click(screen.getByRole("button", { name: "Resume" }));
     await waitFor(() => {
       expect(screen.queryByRole("dialog", { name: "Resume movie" })).not.toBeInTheDocument();
     });
+    expect(fetchMock.mock.calls.map(([url]) => requestUrl(url))).toContain("/api/v1/library/play");
   });
 });
