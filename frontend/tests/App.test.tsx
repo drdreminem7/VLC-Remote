@@ -118,7 +118,7 @@ describe("mobile remote", () => {
       expect(screen.getByRole("region", { name: "Current playback" })).toBeInTheDocument();
     });
     expect(screen.getByRole("status")).toHaveTextContent("Connected");
-    expect(screen.getAllByText("Paused")).toHaveLength(1);
+    expect(screen.queryByText("Paused")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Play playback" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "Skip backward 10 seconds" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "Skip forward 10 seconds" })).toBeEnabled();

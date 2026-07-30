@@ -323,29 +323,12 @@ svg {
 }
 
 .touch-surface__artwork {
-    --artwork-top-clearance: clamp(6.75rem, 29%, 8rem);
-    --artwork-bottom-clearance: clamp(4.25rem, 21%, 5.75rem);
     position: absolute;
     z-index: 0;
-    top: var(--artwork-top-clearance);
-    bottom: var(--artwork-bottom-clearance);
-    left: 50%;
-    width: auto;
-    max-width: calc(100% - (var(--space-lg) * 2));
-    aspect-ratio: 2 / 3;
+    inset: 0;
     overflow: hidden;
-    border: 1px solid color-mix(in oklch, var(--ink) 18%, transparent);
-    border-radius: var(--radius-md);
+    border-radius: inherit;
     background: var(--surface-raised);
-    box-shadow: 0 1rem 2rem var(--shadow-contact);
-    opacity: 0.9;
-    transform: translateX(-50%);
-}
-
-.touch-surface--with-artwork .touch-surface__artwork {
-    --artwork-top-clearance: clamp(3.5rem, 14%, 4.5rem);
-    --artwork-bottom-clearance: clamp(4.25rem, 21%, 5.75rem);
-    opacity: 0.96;
 }
 
 .touch-surface__artwork::after {
@@ -353,7 +336,7 @@ svg {
     inset: 0;
     background: linear-gradient(
         180deg,
-        color-mix(in oklch, var(--paper-deep) 8%, transparent),
+        color-mix(in oklch, var(--paper-deep) 24%, transparent),
         color-mix(in oklch, var(--paper-deep) 42%, transparent)
     );
     content: "";
@@ -364,12 +347,12 @@ svg {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    filter: saturate(0.82) contrast(0.94);
+    filter: saturate(0.76) contrast(0.94);
 }
 
 .touch-surface__content {
     position: relative;
-    z-index: 1;
+    z-index: 2;
     display: flex;
     max-width: 18rem;
     flex-direction: column;
@@ -413,9 +396,17 @@ svg {
 
 .timeline {
     position: relative;
-    z-index: 1;
+    z-index: 2;
     display: grid;
+    margin-top: auto;
     gap: var(--space-sm);
+}
+
+.touch-surface--with-artwork .timeline {
+    padding: var(--space-xs) var(--space-sm);
+    border-radius: var(--radius-sm);
+    background: color-mix(in oklch, var(--paper-deep) 30%, transparent);
+    box-shadow: 0 0.5rem 1.5rem color-mix(in oklch, var(--paper-deep) 28%, transparent);
 }
 
 .range-input {

@@ -143,10 +143,6 @@ function movieTitle(title: string): string {
   return withoutExtension || filename;
 }
 
-function playbackStateLabel(state: VlcStatus["state"]): string {
-  return state === "playing" ? "Playing" : "Paused";
-}
-
 function mediaHeading(connection: ConnectionState): string {
   if (connection === "unauthenticated") {
     return "Pair this phone.";
@@ -334,15 +330,13 @@ export default function App() {
               />
             </div>
           ) : null}
-          <div className="touch-surface__content">
-            <p className="eyebrow">
-              {status === null
-                ? connectionLabel(remote.connection)
-                : playbackStateLabel(status.state)}
-            </p>
-            {!hasMedia ? <h1>{mediaHeading(remote.connection)}</h1> : null}
-            {description ? <p className="touch-surface__message">{description}</p> : null}
-          </div>
+          {!hasMedia ? (
+            <div className="touch-surface__content">
+              <p className="eyebrow">{connectionLabel(remote.connection)}</p>
+              <h1>{mediaHeading(remote.connection)}</h1>
+              {description ? <p className="touch-surface__message">{description}</p> : null}
+            </div>
+          ) : null}
 
           <div className="timeline" aria-label="Playback timeline">
             <label className="sr-only" htmlFor="seek-timeline">
