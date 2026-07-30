@@ -347,7 +347,14 @@ export default function App() {
 
   const selectLibraryMovie = (movie: LibraryMovie) => {
     if (typeof movie.resumeSeconds === "number") {
-      setResumeMovie(movie);
+      setLibraryOpen(false);
+      setLibraryPlayingId(movie.id);
+      void remote.playLibraryMovie(movie.id, true).then((nextStatus) => {
+        setLibraryPlayingId(null);
+        if (nextStatus !== null) {
+          setResumeMovie(movie);
+        }
+      });
       return;
     }
     void playLibraryMovie(movie.id);
@@ -415,25 +422,12 @@ export default function App() {
       setLibraryOpen(false);
       setResumeMovie(null);
       setEndSessionPromptOpen(false);
+      window.close();
     }
   };
 
   if (remote.sessionEnded) {
-    return (
-      <main className="experience experience--ended" id="main-content">
-        <section className="remote remote--ended" aria-label="VLC Remote ended">
-          <div className="remote-ended__content">
-            <span className="remote-ended__mark" aria-hidden="true">V</span>
-            <p className="eyebrow">Remote ended</p>
-            <h1>Everything is closed.</h1>
-            <p>VLC and VLC Remote have closed on your Mac. You can now close this window.</p>
-            <button className="text-button" onClick={() => window.close()} type="button">
-              Close this window
-            </button>
-          </div>
-        </section>
-      </main>
-    );
+    return <main className="experience" id="main-content" />;
   }
 
   return (
@@ -855,9 +849,7 @@ export default function App() {
                 className="text-button"
                 disabled={libraryPlayingId === resumeMovie.id}
                 onClick={() => {
-                  const movie = resumeMovie;
                   setResumeMovie(null);
-                  void playLibraryMovie(movie.id);
                 }}
                 type="button"
               >
@@ -869,7 +861,7 @@ export default function App() {
                 onClick={() => {
                   const movie = resumeMovie;
                   setResumeMovie(null);
-                  void playLibraryMovie(movie.id, true);
+                  void playLibraryMovie(movie.id);
                 }}
                 type="button"
               >

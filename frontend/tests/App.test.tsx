@@ -456,6 +456,7 @@ describe("mobile remote", () => {
       return Promise.resolve(response(pausedStatus));
     });
     vi.stubGlobal("fetch", fetchMock);
+    const closeSpy = vi.spyOn(window, "close").mockImplementation(() => undefined);
 
     render(<App />);
     fireEvent.click(await screen.findByRole("button", { name: "Open remote settings" }));
@@ -463,7 +464,7 @@ describe("mobile remote", () => {
     expect(screen.getByRole("dialog", { name: "End VLC Remote" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "End everything" }));
 
-    expect(await screen.findByRole("heading", { name: "Everything is closed." })).toBeInTheDocument();
+    await waitFor(() => expect(closeSpy).toHaveBeenCalledOnce());
     expect(fetchMock.mock.calls.map(([url]) => requestUrl(url))).toContain("/api/v1/session/end");
   });
 

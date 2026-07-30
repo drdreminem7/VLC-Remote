@@ -9,7 +9,7 @@ from typing import Any
 
 import pytest
 
-from scripts import run_menu_bar_service
+from scripts import launch_vlc_http, run_menu_bar_service
 from scripts.show_pairing_qr import parse_args
 
 
@@ -77,3 +77,9 @@ def test_menu_bar_adds_common_node_paths_for_dock_launches(
 
 def test_menu_bar_uses_a_distinct_exit_code_for_running_vlc() -> None:
     assert run_menu_bar_service.VLC_ALREADY_RUNNING_EXIT_CODE == 12
+
+
+def test_vlc_launch_uses_native_fullscreen_mode() -> None:
+    assert "--macosx-nativefullscreenmode" in launch_vlc_http.vlc_launch_command(
+        "private-password"
+    )

@@ -26,6 +26,20 @@ def vlc_is_already_running() -> bool:
     return completed.returncode == 0
 
 
+def vlc_launch_command(password: str) -> list[str]:
+    """Return the temporary, local-only VLC launch configuration."""
+
+    return [
+        str(VLC_EXECUTABLE),
+        "--intf=macosx",
+        "--extraintf=http",
+        "--macosx-nativefullscreenmode",
+        "--http-host=127.0.0.1",
+        "--http-port=8080",
+        f"--http-password={password}",
+    ]
+
+
 def main() -> int:
     if not VLC_EXECUTABLE.is_file():
         print(f"VLC was not found at {VLC_EXECUTABLE}.", file=sys.stderr)
@@ -45,14 +59,7 @@ def main() -> int:
         return 1
 
     subprocess.Popen(
-        [
-            str(VLC_EXECUTABLE),
-            "--intf=macosx",
-            "--extraintf=http",
-            "--http-host=127.0.0.1",
-            "--http-port=8080",
-            f"--http-password={password}",
-        ],
+        vlc_launch_command(password),
         start_new_session=True,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
