@@ -332,12 +332,11 @@ svg {
 }
 
 .touch-surface--with-artwork {
-    width: min(100%, 15rem);
-    min-height: 0;
-    flex: 0 0 auto;
+    width: auto;
+    max-width: 100%;
+    flex: 1;
     align-self: center;
     aspect-ratio: 2 / 3;
-    margin-block: auto;
 }
 
 .touch-surface__artwork::after {
@@ -918,10 +917,6 @@ svg {
         padding: var(--space-md);
     }
 
-    .touch-surface--with-artwork {
-        width: min(100%, 13rem);
-    }
-
     .touch-surface h1 {
         font-size: 3rem;
     }
@@ -975,9 +970,6 @@ svg {
         min-height: 16rem;
     }
 
-    .touch-surface--with-artwork {
-        width: min(100%, 11rem);
-    }
 }
 
 @media (prefers-reduced-motion: reduce) {
