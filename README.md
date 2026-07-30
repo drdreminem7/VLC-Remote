@@ -83,6 +83,20 @@ this project folder. Later launches start the local remote and display its QR
 code automatically. Closing the QR window leaves the remote running; quitting
 the Dock app stops the remote and asks VLC to quit normally.
 
+### Optional one-tap iPhone launch
+
+An iPhone Shortcut can start the Dock app over SSH, then open the pairing URL
+it receives from the Mac. The installer places its restricted helper in the
+user's Application Support directory, so the Shortcut does not need access to
+the project folder on Desktop.
+
+Enable **System Settings → General → Sharing → Remote Login**, then configure
+Shortcuts' **Run Script over SSH** action with an SSH key rather than a Mac
+password. Authorize that public key with a forced command to
+`vlc-remote-shortcut`; never use it as a general-purpose SSH key. Keep the
+Shortcut limited to a trusted home network and do not configure router port
+forwarding for SSH.
+
 ## Optional movie posters
 
 Create a local `.env` from `.env.example`, then add a TMDB API Read Access
@@ -128,6 +142,8 @@ make build
 - Movie selections are constrained to files currently inside `Desktop/Movies`.
 - This is for a trusted private network. Do not expose port 8000 to the public
   internet.
+- The optional iPhone launch key is restricted to one local command; it is not
+  a general SSH login.
 
 More detail: [VLC setup](docs/VLC_SETUP.md),
 [security](docs/SECURITY.md), and [troubleshooting](docs/TROUBLESHOOTING.md).
