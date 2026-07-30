@@ -30,6 +30,10 @@ class Settings(BaseSettings):
     vlc_http_password: SecretStr | None = None
     vlc_remote_access_token: SecretStr | None = None
     tmdb_api_token: SecretStr | None = None
+    movie_library_directory: Path = Field(
+        default_factory=lambda: Path.home() / "Desktop" / "Movies",
+        exclude=True,
+    )
     vlc_remote_log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
     vlc_remote_allowed_hosts: str = "localhost,127.0.0.1"
     vlc_remote_enable_discovery: bool = True

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import App from "../src/App";
@@ -86,6 +86,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllGlobals();
 });
 
@@ -144,6 +145,34 @@ describe("mobile remote", () => {
         "data:image/jpeg;base64,poster"
       );
     });
+  });
+
+  it("opens the Desktop Movies library after a sustained press on the touch surface", async () => {
+    window.localStorage.setItem("mac-vlc-remote.access-token.v1", TOKEN);
+    const movies = {
+      movies: [
+        {
+          id: "a".repeat(24),
+          title: "The Quiet Film",
+          artworkQuery: "The.Quiet.Film.2024"
+        }
+      ]
+    };
+    const fetchMock = remoteFetch(response(pausedStatus), response(movies));
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<App />);
+    const touchSurface = await screen.findByRole("region", { name: "Current playback" });
+
+    vi.useFakeTimers();
+    fireEvent.pointerDown(touchSurface);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1200);
+    });
+
+    expect(screen.getByRole("dialog", { name: "Movie library" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Play The Quiet Film" })).toBeInTheDocument();
+    expect(apiUrls(fetchMock)).toEqual(["/api/v1/status", "/api/v1/library"]);
   });
 
   it("prefers VLC's filename over noisy media metadata for poster lookup", async () => {
@@ -415,5 +444,46 @@ describe("mobile remote", () => {
     expect(await screen.findByRole("button", { name: "Stop playback" })).toBeEnabled();
     fireEvent.click(screen.getByRole("button", { name: "Close remote settings" }));
     expect(screen.queryByRole("dialog", { name: "Remote settings" })).not.toBeInTheDocument();
+  });
+
+  it("opens the Desktop Movies library from settings and plays a listed movie", async () => {
+    window.localStorage.setItem("mac-vlc-remote.access-token.v1", TOKEN);
+    const libraryMovie = {
+      id: "a".repeat(24),
+      title: "The Quiet Film",
+      artworkQuery: "The.Quiet.Film.2024.1080p"
+    };
+    const playingStatus = {
+      ...pausedStatus,
+      state: "playing",
+      media: { title: "The Quiet Film", filename: "The.Quiet.Film.2024.mkv" }
+    };
+    const fetchMock = vi.fn<typeof fetch>().mockImplementation((input, options) => {
+      const url = requestUrl(input);
+      if (url.startsWith("/api/v1/artwork")) {
+        return Promise.resolve(response({ imageData: null }));
+      }
+      if (url === "/api/v1/library") {
+        return Promise.resolve(response({ movies: [libraryMovie] }));
+      }
+      if (url === "/api/v1/library/play") {
+        expect(options?.body).toBe(`{"movieId":"${libraryMovie.id}"}`);
+        return Promise.resolve(response(playingStatus));
+      }
+      return Promise.resolve(response(pausedStatus));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<App />);
+    fireEvent.click(await screen.findByRole("button", { name: "Open remote settings" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Open movie library" }));
+
+    expect(await screen.findByRole("dialog", { name: "Movie library" })).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole("button", { name: "Play The Quiet Film" }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog", { name: "Movie library" })).not.toBeInTheDocument();
+    });
+    expect(fetchMock.mock.calls.map(([url]) => requestUrl(url))).toContain("/api/v1/library/play");
   });
 });

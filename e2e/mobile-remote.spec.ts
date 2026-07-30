@@ -231,3 +231,41 @@ test("forgets an authentication-rejected pairing token", async ({ page }) => {
 
   await expect(page.getByRole("heading", { name: "Pair this phone." })).toBeVisible();
 });
+
+test("opens the movie library with a long press and plays a listed movie", async ({ page }) => {
+  const movie = {
+    id: "a".repeat(24),
+    title: "The Quiet Film",
+    artworkQuery: "The.Quiet.Film.2024.1080p"
+  };
+  await mockOnlineStatus(page);
+  await page.route("**/api/v1/library", (route) =>
+    route.fulfill({ contentType: "application/json", body: JSON.stringify({ movies: [movie] }) })
+  );
+  await page.route("**/api/v1/library/play", async (route) => {
+    expect(route.request().postDataJSON()).toEqual({ movieId: movie.id });
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        ...pausedStatus,
+        state: "playing",
+        media: { title: movie.title, filename: "The.Quiet.Film.2024.mkv" }
+      })
+    });
+  });
+
+  await page.goto(`/#token=${TOKEN}`);
+  const touchSurface = page.locator(".touch-surface");
+  const box = await touchSurface.boundingBox();
+  if (box === null) {
+    throw new Error("Could not measure touch surface");
+  }
+  await page.mouse.move(box.x + 16, box.y + 16);
+  await page.mouse.down();
+  await page.waitForTimeout(1250);
+  await page.mouse.up();
+
+  await expect(page.getByRole("dialog", { name: "Movie library" })).toBeVisible();
+  await page.getByRole("button", { name: "Play The Quiet Film" }).click();
+  await expect(page.getByRole("dialog", { name: "Movie library" })).toHaveCount(0);
+});

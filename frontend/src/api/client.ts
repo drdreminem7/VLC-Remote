@@ -1,4 +1,4 @@
-import type { VlcStatus } from "../types";
+import type { MovieLibraryResponse, VlcStatus } from "../types";
 
 interface ErrorPayload {
   error?: {
@@ -27,6 +27,8 @@ export class RemoteApiError extends Error {
 
 export interface RemoteApi {
   getStatus(signal?: AbortSignal): Promise<VlcStatus>;
+  getLibrary(signal?: AbortSignal): Promise<MovieLibraryResponse>;
+  playLibraryMovie(movieId: string, signal?: AbortSignal): Promise<VlcStatus>;
   togglePlayback(signal?: AbortSignal): Promise<VlcStatus>;
   play(signal?: AbortSignal): Promise<VlcStatus>;
   pause(signal?: AbortSignal): Promise<VlcStatus>;
@@ -52,10 +54,10 @@ export function createRemoteApi(
   accessToken: string,
   fetchImplementation: FetchImplementation = window.fetch.bind(window)
 ): RemoteApi {
-  async function request(
+  async function request<T>(
     path: string,
     options: RequestInit = {}
-  ): Promise<VlcStatus> {
+  ): Promise<T> {
     const headers = new Headers(options.headers);
     headers.set("Authorization", `Bearer ${accessToken}`);
     headers.set("Accept", "application/json");
@@ -82,11 +84,11 @@ export function createRemoteApi(
       );
     }
 
-    return payload as VlcStatus;
+    return payload as T;
   }
 
-  function post(path: string, body?: object, signal?: AbortSignal): Promise<VlcStatus> {
-    return request(path, {
+  function post<T = VlcStatus>(path: string, body?: object, signal?: AbortSignal): Promise<T> {
+    return request<T>(path, {
       method: "POST",
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
       ...(signal === undefined ? {} : { signal })
@@ -94,8 +96,11 @@ export function createRemoteApi(
   }
 
   return {
-    getStatus: (signal) =>
-      request("/status", signal === undefined ? {} : { signal }),
+    getStatus: (signal) => request<VlcStatus>("/status", signal === undefined ? {} : { signal }),
+    getLibrary: (signal) =>
+      request<MovieLibraryResponse>("/library", signal === undefined ? {} : { signal }),
+    playLibraryMovie: (movieId, signal) =>
+      post("/library/play", { movieId }, signal),
     togglePlayback: (signal) => post("/playback/toggle", undefined, signal),
     play: (signal) => post("/playback/play", undefined, signal),
     pause: (signal) => post("/playback/pause", undefined, signal),

@@ -9,7 +9,7 @@ import {
   forgetStoredAccessToken,
   getInitialAccessToken
 } from "../auth";
-import type { ConnectionState, VlcStatus } from "../types";
+import type { ConnectionState, MovieLibraryResponse, VlcStatus } from "../types";
 
 const VISIBLE_POLL_MS = 900;
 const HIDDEN_POLL_MS = 6000;
@@ -22,6 +22,8 @@ export interface RemoteState {
   pendingAction: string | null;
   token: string | null;
   forgetPairing(): void;
+  getLibrary: (signal?: AbortSignal) => Promise<MovieLibraryResponse | null>;
+  playLibraryMovie(movieId: string): Promise<VlcStatus | null>;
   togglePlayback(): Promise<void>;
   play(): Promise<void>;
   pause(): Promise<void>;
@@ -292,6 +294,36 @@ export function useRemote(): RemoteState {
     setMessage(describeConnection("unauthenticated"));
   }, []);
 
+  const getLibrary = useCallback(
+    async (signal?: AbortSignal): Promise<MovieLibraryResponse | null> => {
+      if (api === null || !navigator.onLine) {
+        return null;
+      }
+      try {
+        return await api.getLibrary(signal);
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          return null;
+        }
+        const nextConnection = connectionFromError(error);
+        if (nextConnection === "unauthenticated") {
+          forgetStoredAccessToken();
+          setToken(null);
+          statusRef.current = null;
+          setStatus(null);
+        }
+        setConnection(nextConnection);
+        setMessage(
+          error instanceof RemoteApiError
+            ? error.message
+            : describeConnection(nextConnection)
+        );
+        return null;
+      }
+    },
+    [api]
+  );
+
   return {
     connection,
     status,
@@ -299,6 +331,11 @@ export function useRemote(): RemoteState {
     pendingAction,
     token,
     forgetPairing,
+    getLibrary,
+    playLibraryMovie: (movieId) =>
+      runCommand("library-play", (activeApi, signal) =>
+        activeApi.playLibraryMovie(movieId, signal)
+      ),
     togglePlayback: () =>
       runCommand("toggle", (activeApi, signal) => activeApi.togglePlayback(signal)).then(
         () => undefined

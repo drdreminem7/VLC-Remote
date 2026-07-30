@@ -1,6 +1,7 @@
 """Deterministic in-memory VLC client used by automated tests."""
 
 from datetime import UTC, datetime
+from pathlib import Path
 
 from backend.app.errors import VlcError
 from backend.app.models.playback import (
@@ -98,6 +99,17 @@ class FakeVlcClient:
         self._raise_failure()
         self.commands.append(("stop", None))
         return self._updated(state=PlaybackState.STOPPED)
+
+    async def play_media(self, file_path: Path) -> VlcStatus:
+        self._raise_failure()
+        self.commands.append(("play_media", file_path.name))
+        return self._updated(
+            state=PlaybackState.PLAYING,
+            media=MediaInformation(
+                title=file_path.stem,
+                filename=file_path.name,
+            ),
+        )
 
     async def seek_relative(self, seconds: int) -> VlcStatus:
         self._raise_failure()

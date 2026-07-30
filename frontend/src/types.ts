@@ -12,6 +12,16 @@ export interface VlcTrack {
   selected: boolean;
 }
 
+export interface LibraryMovie {
+  id: string;
+  title: string;
+  artworkQuery: string;
+}
+
+export interface MovieLibraryResponse {
+  movies: readonly LibraryMovie[];
+}
+
 export interface VlcStatus {
   connection: {
     backend: string;

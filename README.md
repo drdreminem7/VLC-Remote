@@ -13,6 +13,7 @@ scan one QR code, and control VLC from the same home network.
 - Controls play/pause, ±10-second seek, timeline seek, volume (0–200), mute,
   and playback speed.
 - Shows a movie poster while media is playing, using TMDB when configured.
+- Lets a paired phone choose a movie from `Desktop/Movies`.
 - Runs as an installable phone web app and an optional Mac Dock app.
 - Keeps VLC's HTTP password on the Mac. The phone never receives it.
 
@@ -22,9 +23,14 @@ Phone browser or PWA → FastAPI on the Mac → VLC HTTP on 127.0.0.1
 
 ## Screenshots
 
-Real-device screenshots belong in [`docs/screenshots`](docs/screenshots).
-Capture them only after pairing with a fresh QR code—never include the pairing
-URL or token in a screenshot.
+<p align="center">
+  <img src="docs/screenshots/IMG_1348.jpg" width="31%" alt="VLC Remote playing Star Wars">
+  <img src="docs/screenshots/IMG_1349.jpg" width="31%" alt="VLC Remote playing Stalker">
+  <img src="docs/screenshots/IMG_1350.jpg" width="31%" alt="VLC Remote playing Chinatown">
+</p>
+
+Future real-device screenshots belong in [`docs/screenshots`](docs/screenshots).
+Never include a pairing URL or token in a screenshot.
 
 ## Requirements
 
@@ -50,6 +56,16 @@ To show a fresh QR without restarting the service:
 ```bash
 make pairing
 ```
+
+## Movie library
+
+Put movies anywhere inside `~/Desktop/Movies`; each movie may live in its own
+named folder. Press and hold the poster/touch surface for about 1.2 seconds to
+open the picker, then tap a poster to play it. The same picker is available in
+**Settings → Movie library**.
+
+The phone receives only opaque IDs and display metadata. The Mac re-scans and
+validates each selection inside `Desktop/Movies` before VLC is asked to open it.
 
 ## Mac app
 
@@ -106,6 +122,7 @@ make build
 - The pairing token is kept in the URL fragment, then removed before requests.
 - The frontend accepts only fixed, typed control actions—never arbitrary VLC
   commands, URLs, shell commands, or AppleScript.
+- Movie selections are constrained to files currently inside `Desktop/Movies`.
 - This is for a trusted private network. Do not expose port 8000 to the public
   internet.
 

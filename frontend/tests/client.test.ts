@@ -58,6 +58,36 @@ describe("remote API client", () => {
     expect(fetchMock.mock.calls[0]?.[1]?.body).toBe('{"percent":180}');
   });
 
+  it("lists and plays only opaque IDs from the local movie library", async () => {
+    const movieId = "d".repeat(24);
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            movies: [
+              { id: movieId, title: "The Quiet Film", artworkQuery: "The.Quiet.Film" }
+            ]
+          }),
+          { status: 200 }
+        )
+      )
+      .mockResolvedValueOnce(new Response(JSON.stringify(status), { status: 200 }));
+    const api = createRemoteApi(TOKEN, fetchMock);
+
+    const library = await api.getLibrary();
+    const movie = library.movies[0];
+    expect(movie).toBeDefined();
+    if (movie === undefined) {
+      throw new Error("Expected a movie in the library response");
+    }
+    await api.playLibraryMovie(movie.id);
+
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/v1/library");
+    expect(fetchMock.mock.calls[1]?.[0]).toBe("/api/v1/library/play");
+    expect(fetchMock.mock.calls[1]?.[1]?.body).toBe(`{"movieId":"${movieId}"}`);
+  });
+
   it("converts the standard server error into a safe typed error", async () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
       new Response(

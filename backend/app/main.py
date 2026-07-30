@@ -22,11 +22,13 @@ from backend.app.errors import (
 from backend.app.routers.artwork import router as artwork_router
 from backend.app.routers.controls import router as controls_router
 from backend.app.routers.health import router as health_router
+from backend.app.routers.library import router as library_router
 from backend.app.routers.status import router as status_router
 from backend.app.services.movie_artwork import (
     MovieArtworkLookup,
     MovieArtworkLookupProtocol,
 )
+from backend.app.services.movie_library import MovieLibrary, MovieLibraryProtocol
 from backend.app.services.status_coordinator import StatusCoordinator
 from backend.app.services.vlc_client import (
     HttpxVlcClient,
@@ -46,6 +48,7 @@ def create_app(
     settings: Settings | None = None,
     vlc_client: VlcClientProtocol | None = None,
     artwork_lookup: MovieArtworkLookupProtocol | None = None,
+    movie_library: MovieLibraryProtocol | None = None,
 ) -> FastAPI:
     """Build an application instance suitable for production and tests."""
 
@@ -62,6 +65,9 @@ def create_app(
             if active_settings.tmdb_api_token is not None
             else None
         )
+    )
+    active_movie_library = movie_library or MovieLibrary(
+        active_settings.movie_library_directory
     )
 
     @asynccontextmanager
@@ -84,6 +90,7 @@ def create_app(
     application.state.vlc_client = active_vlc_client
     application.state.status_coordinator = StatusCoordinator()
     application.state.artwork_lookup = active_artwork_lookup
+    application.state.movie_library = active_movie_library
 
     application.add_middleware(
         TrustedHostMiddleware,
@@ -100,6 +107,7 @@ def create_app(
     application.include_router(status_router, prefix="/api/v1")
     application.include_router(controls_router, prefix="/api/v1")
     application.include_router(artwork_router, prefix="/api/v1")
+    application.include_router(library_router, prefix="/api/v1")
 
     @application.api_route(
         "/api/{unmatched_path:path}",

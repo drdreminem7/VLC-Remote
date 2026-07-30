@@ -208,6 +208,9 @@ svg {
 .utility-button,
 .text-button,
 .icon-stop-button,
+.library-launch-button,
+.library-movie,
+.library-more-button,
 .advanced-controls button {
     border: 1px solid var(--line);
     background: var(--surface-raised);
@@ -226,6 +229,9 @@ svg {
 .utility-button:not(:disabled):active,
 .text-button:not(:disabled):active,
 .icon-stop-button:not(:disabled):active,
+.library-launch-button:not(:disabled):active,
+.library-movie:not(:disabled):active,
+.library-more-button:not(:disabled):active,
 .advanced-controls button:not(:disabled):active {
     transform: scale(0.98);
 }
@@ -234,6 +240,9 @@ svg {
 .utility-button:disabled,
 .text-button:disabled,
 .icon-stop-button:disabled,
+.library-launch-button:disabled,
+.library-movie:disabled,
+.library-more-button:disabled,
 .advanced-controls button:disabled {
     color: var(--ink-muted);
     opacity: 0.58;
@@ -716,7 +725,8 @@ svg {
     width: 0.875rem;
 }
 
-.settings-dialog {
+.settings-dialog,
+.library-dialog {
     position: fixed;
     z-index: 10;
     inset: 0;
@@ -779,6 +789,139 @@ svg {
 .settings-dialog .advanced-controls,
 .settings-dialog .track-controls {
     margin-top: calc(var(--space-sm) * -1);
+}
+
+.library-launch-button {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: var(--space-sm);
+    border-radius: var(--radius-md);
+    text-align: left;
+}
+
+.library-launch-button svg,
+.library-movie__artwork svg {
+    width: 1.5rem;
+    flex: 0 0 auto;
+    fill: none;
+    stroke: currentcolor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.65;
+}
+
+.library-launch-button span {
+    display: grid;
+    gap: 0.125rem;
+}
+
+.library-launch-button strong,
+.library-launch-button small {
+    font: inherit;
+}
+
+.library-launch-button strong {
+    font-size: 0.9375rem;
+}
+
+.library-launch-button small {
+    color: var(--ink-muted);
+    font-size: 0.75rem;
+}
+
+.library-dialog__sheet {
+    display: grid;
+    width: min(100%, 28rem);
+    max-height: min(44rem, calc(100dvh - (var(--space-md) * 2)));
+    margin-inline: auto;
+    gap: var(--space-md);
+    overflow: auto;
+    padding: var(--space-lg);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    background: var(--shell);
+    box-shadow: 0 -1.25rem 3rem var(--shadow-contact);
+    animation: sheet-in 300ms var(--ease-out-expo) both;
+}
+
+.library-dialog__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-md);
+}
+
+.library-dialog__header h2 {
+    margin: var(--space-2xs) 0 0;
+    font-family: var(--font-display);
+    font-size: 1.75rem;
+    font-weight: 600;
+    letter-spacing: -0.03em;
+    line-height: 1;
+}
+
+.library-dialog__message {
+    margin: 0;
+    color: var(--ink-muted);
+    font-size: 0.9375rem;
+    line-height: 1.45;
+}
+
+.library-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-sm);
+}
+
+.library-movie {
+    display: grid;
+    min-width: 0;
+    overflow: hidden;
+    padding: 0;
+    border-radius: var(--radius-sm);
+    text-align: left;
+}
+
+.library-movie__artwork {
+    display: grid;
+    aspect-ratio: 2 / 3;
+    place-items: center;
+    overflow: hidden;
+    background:
+        radial-gradient(circle at 50% 20%, color-mix(in oklch, var(--accent) 24%, transparent), transparent 40%),
+        var(--surface);
+    color: var(--ink-muted);
+}
+
+.library-movie__artwork img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.library-movie__title {
+    display: -webkit-box;
+    min-height: 3.75rem;
+    overflow: hidden;
+    padding: var(--space-xs) var(--space-sm) var(--space-sm);
+    color: var(--ink);
+    font-family: var(--font-display);
+    font-size: 1rem;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    line-height: 1.05;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+}
+
+.library-more-button {
+    min-height: 2.75rem;
+    padding: var(--space-xs) var(--space-sm);
+    border-radius: var(--radius-sm);
+    font-size: 0.8125rem;
+    font-weight: 700;
 }
 
 .room-note {
@@ -863,6 +1006,9 @@ svg {
     .round-button:not(:disabled):hover,
     .text-button:not(:disabled):hover,
     .icon-stop-button:not(:disabled):hover,
+    .library-launch-button:not(:disabled):hover,
+    .library-movie:not(:disabled):hover,
+    .library-more-button:not(:disabled):hover,
     .advanced-controls button:not(:disabled):hover {
         transform: translateY(-0.0625rem);
         background: var(--shell-raised);

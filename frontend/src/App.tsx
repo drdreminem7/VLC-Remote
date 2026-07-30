@@ -1,14 +1,23 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent
+} from "react";
 
 import { useRemote } from "./hooks/useRemote";
 import { lookupMoviePoster } from "./api/poster";
-import type { ConnectionState, VlcStatus } from "./types";
+import type { ConnectionState, LibraryMovie, VlcStatus } from "./types";
 import { clamp, formatDuration } from "./utils/time";
 
 const DEFAULT_RATES = [0.5, 0.75, 1, 1.25, 1.5, 2];
 const VIDEO_FILE_EXTENSION =
   /\.(?:3g2|3gp|asf|avi|divx|flv|m2ts|m4v|mkv|mov|mp4|mpeg|mpg|mts|ogm|ogv|ts|vob|webm|wmv)$/i;
 const SEEK_SETTLE_TOLERANCE_SECONDS = 3;
+const LIBRARY_HOLD_MS = 1200;
+const INITIAL_LIBRARY_MOVIES = 18;
 
 function normalizePlaybackRate(rate: number): number {
   return Math.round(rate * 100) / 100;
@@ -31,6 +40,16 @@ function SettingsIcon() {
     <svg aria-hidden="true" viewBox="0 0 24 24">
       <circle cx="12" cy="12" r="3" />
       <path d="M19 12a7.3 7.3 0 0 0-.1-1.2l2-1.55-2-3.45-2.45 1a7 7 0 0 0-2.05-1.2L14 3h-4l-.4 2.6a7 7 0 0 0-2.05 1.2l-2.45-1-2 3.45 2 1.55A7.3 7.3 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.55 2 3.45 2.45-1a7 7 0 0 0 2.05 1.2L10 21h4l.4-2.6a7 7 0 0 0 2.05-1.2l2.45 1 2-3.45-2-1.55c.07-.4.1-.8.1-1.2Z" />
+    </svg>
+  );
+}
+
+function LibraryIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <rect height="13" rx="1.75" width="17" x="3.5" y="6.5" />
+      <path d="M8 4.5h8M8 10.25h.01M12 10.25h.01M16 10.25h.01" />
+      <path d="m10.25 14 4.5 2.5-4.5 2.5v-5Z" />
     </svg>
   );
 }
@@ -169,13 +188,64 @@ function mediaDescription(status: VlcStatus | null, connection: ConnectionState)
   return "The remote will reconnect automatically when the Mac is available.";
 }
 
+function LibraryMovieCard({
+  movie,
+  accessToken,
+  busy,
+  onPlay
+}: {
+  movie: LibraryMovie;
+  accessToken: string | null;
+  busy: boolean;
+  onPlay: (movieId: string) => void;
+}) {
+  const [posterUrl, setPosterUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void lookupMoviePoster(movie.artworkQuery, accessToken, controller.signal).then((url) => {
+      if (!controller.signal.aborted) {
+        setPosterUrl(url);
+      }
+    });
+    return () => controller.abort();
+  }, [accessToken, movie.artworkQuery]);
+
+  return (
+    <button
+      aria-busy={busy}
+      aria-label={`Play ${movie.title}`}
+      className="library-movie"
+      disabled={busy}
+      onClick={() => onPlay(movie.id)}
+      type="button"
+    >
+      <span className="library-movie__artwork" aria-hidden="true">
+        {posterUrl ? (
+          <img alt="" loading="lazy" onError={() => setPosterUrl(null)} src={posterUrl} />
+        ) : (
+          <LibraryIcon />
+        )}
+      </span>
+      <span className="library-movie__title">{movie.title}</span>
+    </button>
+  );
+}
+
 export default function App() {
   const remote = useRemote();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [seekPreview, setSeekPreview] = useState<number | null>(null);
   const [poster, setPoster] = useState<{ title: string; url: string } | null>(null);
+  const [libraryOpen, setLibraryOpen] = useState(false);
+  const [libraryMovies, setLibraryMovies] = useState<readonly LibraryMovie[] | null>(null);
+  const [libraryLoading, setLibraryLoading] = useState(false);
+  const [libraryError, setLibraryError] = useState<string | null>(null);
+  const [libraryVisibleCount, setLibraryVisibleCount] = useState(INITIAL_LIBRARY_MOVIES);
+  const [libraryPlayingId, setLibraryPlayingId] = useState<string | null>(null);
   const seekingRef = useRef(false);
   const seekPreviewRef = useRef<number | null>(null);
+  const libraryHoldTimerRef = useRef<number | undefined>(undefined);
 
   const status = remote.status;
   const mediaSource = status?.media.title || status?.media.filename || "";
@@ -230,20 +300,81 @@ export default function App() {
 
   const posterUrl = poster?.title === posterTitle ? poster.url : null;
 
+  const clearLibraryHold = useCallback(() => {
+    if (libraryHoldTimerRef.current !== undefined) {
+      window.clearTimeout(libraryHoldTimerRef.current);
+      libraryHoldTimerRef.current = undefined;
+    }
+  }, []);
+
+  const openLibrary = useCallback(() => {
+    clearLibraryHold();
+    setSettingsOpen(false);
+    setLibraryMovies(null);
+    setLibraryLoading(true);
+    setLibraryError(null);
+    setLibraryVisibleCount(INITIAL_LIBRARY_MOVIES);
+    setLibraryOpen(true);
+  }, [clearLibraryHold]);
+
+  const beginLibraryHold = (event: ReactPointerEvent<HTMLElement>) => {
+    const target = event.target as HTMLElement;
+    if (target.closest(".timeline")) {
+      return;
+    }
+    clearLibraryHold();
+    libraryHoldTimerRef.current = window.setTimeout(() => {
+      libraryHoldTimerRef.current = undefined;
+      openLibrary();
+    }, LIBRARY_HOLD_MS);
+  };
+
+  useEffect(() => clearLibraryHold, [clearLibraryHold]);
+
   useEffect(() => {
-    if (!settingsOpen) {
+    if (!libraryOpen) {
+      return undefined;
+    }
+    const controller = new AbortController();
+    const getLibrary = remote.getLibrary;
+    void getLibrary(controller.signal).then((library) => {
+      if (controller.signal.aborted) {
+        return;
+      }
+      if (library === null) {
+        setLibraryError("Could not load the movie library. Check the Mac connection.");
+      } else {
+        setLibraryMovies(library.movies);
+      }
+      setLibraryLoading(false);
+    });
+    return () => controller.abort();
+  }, [libraryOpen, remote.getLibrary]);
+
+  const playLibraryMovie = async (movieId: string) => {
+    setLibraryPlayingId(movieId);
+    const nextStatus = await remote.playLibraryMovie(movieId);
+    setLibraryPlayingId(null);
+    if (nextStatus !== null) {
+      setLibraryOpen(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!settingsOpen && !libraryOpen) {
       return undefined;
     }
 
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setSettingsOpen(false);
+        setLibraryOpen(false);
       }
     };
 
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
-  }, [settingsOpen]);
+  }, [libraryOpen, settingsOpen]);
 
   const beginSeeking = () => {
     if (!canSeek) {
@@ -318,6 +449,16 @@ export default function App() {
         <section
           aria-label={hasMedia ? "Current playback" : "Playback status"}
           className={`touch-surface${posterUrl ? " touch-surface--with-artwork" : ""}`}
+          onContextMenu={(event) => event.preventDefault()}
+          onPointerCancel={clearLibraryHold}
+          onPointerDown={beginLibraryHold}
+          onPointerLeave={clearLibraryHold}
+          onPointerMove={(event) => {
+            if ((event.target as HTMLElement).closest(".timeline")) {
+              clearLibraryHold();
+            }
+          }}
+          onPointerUp={clearLibraryHold}
         >
           <div className="touch-surface__texture" aria-hidden="true" />
           {posterUrl ? (
@@ -489,6 +630,20 @@ export default function App() {
 
             <p className="settings-dialog__message" aria-live="polite">{remote.message}</p>
 
+            <button
+              aria-label="Open movie library"
+              className="library-launch-button"
+              disabled={remote.token === null}
+              onClick={openLibrary}
+              type="button"
+            >
+              <LibraryIcon />
+              <span>
+                <strong>Movie library</strong>
+                <small>Desktop Movies</small>
+              </span>
+            </button>
+
             <div className="settings-dialog__actions">
               <button
                 aria-label="Stop playback"
@@ -556,6 +711,75 @@ export default function App() {
                   </label>
                 ) : null}
               </section>
+            ) : null}
+          </section>
+        </div>
+      ) : null}
+
+      {libraryOpen ? (
+        <div className="library-dialog" onMouseDown={() => setLibraryOpen(false)}>
+          <section
+            aria-label="Movie library"
+            aria-modal="true"
+            className="library-dialog__sheet"
+            onMouseDown={(event) => event.stopPropagation()}
+            role="dialog"
+          >
+            <header className="library-dialog__header">
+              <div>
+                <p className="eyebrow">Movie library</p>
+                <h2>Desktop Movies</h2>
+              </div>
+              <button
+                aria-label="Close movie library"
+                className="icon-button"
+                onClick={() => setLibraryOpen(false)}
+                type="button"
+              >
+                <CloseIcon />
+              </button>
+            </header>
+
+            {libraryLoading ? (
+              <p aria-live="polite" className="library-dialog__message">
+                Loading movies…
+              </p>
+            ) : null}
+            {libraryError ? (
+              <p className="library-dialog__message" role="alert">
+                {libraryError}
+              </p>
+            ) : null}
+            {libraryMovies !== null && libraryMovies.length === 0 ? (
+              <p className="library-dialog__message">
+                No supported movie files were found in Desktop/Movies.
+              </p>
+            ) : null}
+            {libraryMovies !== null && libraryMovies.length > 0 ? (
+              <>
+                <div className="library-grid">
+                  {libraryMovies.slice(0, libraryVisibleCount).map((movie) => (
+                    <LibraryMovieCard
+                      accessToken={remote.token}
+                      busy={libraryPlayingId === movie.id}
+                      key={movie.id}
+                      movie={movie}
+                      onPlay={(movieId) => void playLibraryMovie(movieId)}
+                    />
+                  ))}
+                </div>
+                {libraryVisibleCount < libraryMovies.length ? (
+                  <button
+                    className="library-more-button"
+                    onClick={() =>
+                      setLibraryVisibleCount((count) => count + INITIAL_LIBRARY_MOVIES)
+                    }
+                    type="button"
+                  >
+                    Show more movies
+                  </button>
+                ) : null}
+              </>
             ) : null}
           </section>
         </div>

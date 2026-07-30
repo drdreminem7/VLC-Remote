@@ -2,6 +2,7 @@
 
 import asyncio
 from collections.abc import Mapping
+from pathlib import Path
 from typing import Protocol, cast
 
 import httpx
@@ -31,6 +32,8 @@ class VlcClientProtocol(Protocol):
     async def pause(self) -> VlcStatus: ...
 
     async def stop(self) -> VlcStatus: ...
+
+    async def play_media(self, file_path: Path) -> VlcStatus: ...
 
     async def seek_relative(self, seconds: int) -> VlcStatus: ...
 
@@ -83,6 +86,10 @@ class UnconfiguredVlcClient:
         return await self._unavailable()
 
     async def stop(self) -> VlcStatus:
+        return await self._unavailable()
+
+    async def play_media(self, file_path: Path) -> VlcStatus:
+        del file_path
         return await self._unavailable()
 
     async def seek_relative(self, seconds: int) -> VlcStatus:
@@ -224,6 +231,15 @@ class HttpxVlcClient:
 
     async def stop(self) -> VlcStatus:
         return await self._request_status(command="pl_stop")
+
+    async def play_media(self, file_path: Path) -> VlcStatus:
+        """Play a server-validated local file through VLC's fixed input command."""
+
+        return await self._request_status(
+            command="in_play",
+            value_name="input",
+            value=file_path.as_uri(),
+        )
 
     async def seek_relative(self, seconds: int) -> VlcStatus:
         value = f"{seconds:+d}S"

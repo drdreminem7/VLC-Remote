@@ -39,10 +39,12 @@ async def test_client_uses_basic_auth_and_url_encoded_fixed_parameters() -> None
         await client.set_volume(70)
         await client.set_volume(200)
         await client.set_rate(1.25)
+        await client.play_media(Path("/Users/example/Desktop/Movies/Film One.mkv"))
     finally:
         await client.aclose()
 
     assert [request.url.path for request in requests] == [
+        "/requests/status.json",
         "/requests/status.json",
         "/requests/status.json",
         "/requests/status.json",
@@ -52,6 +54,10 @@ async def test_client_uses_basic_auth_and_url_encoded_fixed_parameters() -> None
     assert dict(requests[1].url.params) == {"command": "volume", "val": "179"}
     assert dict(requests[2].url.params) == {"command": "volume", "val": "512"}
     assert dict(requests[3].url.params) == {"command": "rate", "val": "1.25"}
+    assert dict(requests[4].url.params) == {
+        "command": "in_play",
+        "input": "file:///Users/example/Desktop/Movies/Film%20One.mkv",
+    }
     assert requests[0].headers["Authorization"].startswith("Basic ")
     assert "server-only-secret" not in str(requests[0].url)
 
