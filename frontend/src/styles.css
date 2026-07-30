@@ -333,6 +333,7 @@ svg {
 
 .touch-surface__artwork::after {
     position: absolute;
+    z-index: 2;
     inset: 0;
     background: linear-gradient(
         180deg,
@@ -340,10 +341,23 @@ svg {
         color-mix(in oklch, var(--paper-deep) 42%, transparent)
     );
     content: "";
+    pointer-events: none;
 }
 
-.touch-surface__artwork img {
+.touch-surface__artwork-bleed {
+    position: absolute;
+    inset: -1.5rem;
+    width: calc(100% + 3rem);
+    height: calc(100% + 3rem);
+    object-fit: cover;
+    filter: blur(1.25rem) saturate(0.56) contrast(0.88);
+    opacity: 0.68;
+}
+
+.touch-surface__artwork-poster {
     display: block;
+    position: relative;
+    z-index: 1;
     width: 100%;
     height: 100%;
     object-fit: contain;
