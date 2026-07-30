@@ -54,5 +54,11 @@ jobs:
       - name: Frontend tests
         run: npm run test
 
+      - name: Install Playwright browser
+        run: npx playwright install chromium
+
+      - name: Mobile browser tests
+        run: npm run test:e2e
+
       - name: Frontend production build
         run: npm run build
