@@ -34,6 +34,7 @@ def vlc_launch_command(password: str) -> list[str]:
         "--intf=macosx",
         "--extraintf=http",
         "--macosx-nativefullscreenmode",
+        "--macosx-continue-playback=0",
         "--http-host=127.0.0.1",
         "--http-port=8080",
         f"--http-password={password}",
