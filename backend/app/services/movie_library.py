@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Protocol
 
 from backend.app.models.library import LibraryMovie
+from backend.app.services.playback_resume import PlaybackResumeStore
 
 SUPPORTED_MOVIE_SUFFIXES = frozenset(
     {
@@ -70,11 +71,21 @@ class _LibraryEntry:
 class MovieLibrary:
     """List supported files below one configured directory, never arbitrary paths."""
 
-    def __init__(self, directory: Path) -> None:
+    def __init__(
+        self, directory: Path, resume_store: PlaybackResumeStore | None = None
+    ) -> None:
         self._directory = directory.expanduser()
+        self._resume_store = resume_store
 
     async def list_movies(self) -> tuple[LibraryMovie, ...]:
-        return tuple(entry.movie for entry in await asyncio.to_thread(self._entries))
+        entries = await asyncio.to_thread(self._entries)
+        points = await self._resume_store.points() if self._resume_store else {}
+        return tuple(
+            entry.movie.model_copy(
+                update={"resume_seconds": points.get(entry.movie.id)}
+            )
+            for entry in entries
+        )
 
     async def resolve_movie(self, movie_id: str) -> Path | None:
         entries = await asyncio.to_thread(self._entries)

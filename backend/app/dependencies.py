@@ -10,6 +10,7 @@ from backend.app.config import Settings
 from backend.app.errors import ApiException
 from backend.app.services.movie_artwork import MovieArtworkLookupProtocol
 from backend.app.services.movie_library import MovieLibraryProtocol
+from backend.app.services.playback_resume import PlaybackResumeTracker
 from backend.app.services.status_coordinator import StatusCoordinator
 from backend.app.services.vlc_client import VlcClientProtocol
 
@@ -34,6 +35,10 @@ def get_artwork_lookup(request: Request) -> MovieArtworkLookupProtocol:
 
 def get_movie_library(request: Request) -> MovieLibraryProtocol:
     return cast(MovieLibraryProtocol, request.app.state.movie_library)
+
+
+def get_playback_resume_tracker(request: Request) -> PlaybackResumeTracker:
+    return cast(PlaybackResumeTracker, request.app.state.playback_resume_tracker)
 
 
 async def require_access_token(

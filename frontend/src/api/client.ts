@@ -28,7 +28,7 @@ export class RemoteApiError extends Error {
 export interface RemoteApi {
   getStatus(signal?: AbortSignal): Promise<VlcStatus>;
   getLibrary(signal?: AbortSignal): Promise<MovieLibraryResponse>;
-  playLibraryMovie(movieId: string, signal?: AbortSignal): Promise<VlcStatus>;
+  playLibraryMovie(movieId: string, resume: boolean, signal?: AbortSignal): Promise<VlcStatus>;
   togglePlayback(signal?: AbortSignal): Promise<VlcStatus>;
   play(signal?: AbortSignal): Promise<VlcStatus>;
   pause(signal?: AbortSignal): Promise<VlcStatus>;
@@ -99,8 +99,8 @@ export function createRemoteApi(
     getStatus: (signal) => request<VlcStatus>("/status", signal === undefined ? {} : { signal }),
     getLibrary: (signal) =>
       request<MovieLibraryResponse>("/library", signal === undefined ? {} : { signal }),
-    playLibraryMovie: (movieId, signal) =>
-      post("/library/play", { movieId }, signal),
+    playLibraryMovie: (movieId, resume, signal) =>
+      post("/library/play", { movieId, resume }, signal),
     togglePlayback: (signal) => post("/playback/toggle", undefined, signal),
     play: (signal) => post("/playback/play", undefined, signal),
     pause: (signal) => post("/playback/pause", undefined, signal),

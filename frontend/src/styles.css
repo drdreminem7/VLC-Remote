@@ -716,7 +716,8 @@ svg {
 }
 
 .settings-dialog,
-.library-dialog {
+.library-dialog,
+.resume-dialog {
     position: fixed;
     z-index: 10;
     inset: 0;
@@ -857,6 +858,65 @@ svg {
     color: var(--ink-muted);
     font-size: 0.9375rem;
     line-height: 1.45;
+}
+
+.resume-dialog {
+    z-index: 20;
+    align-items: center;
+}
+
+.resume-dialog__sheet {
+    display: grid;
+    width: min(100%, 23rem);
+    gap: var(--space-md);
+    margin-inline: auto;
+    padding: var(--space-lg);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    background: var(--shell);
+    box-shadow: 0 1.25rem 3rem var(--shadow-contact);
+    animation: sheet-in 260ms var(--ease-out-expo) both;
+}
+
+.resume-dialog__sheet h2,
+.resume-dialog__sheet p {
+    margin: 0;
+}
+
+.resume-dialog__sheet h2 {
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    letter-spacing: -0.025em;
+    line-height: 1;
+}
+
+.resume-dialog__sheet > p:not(.eyebrow) {
+    color: var(--ink-muted);
+}
+
+.resume-dialog__actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-sm);
+}
+
+.resume-dialog__actions .text-button,
+.resume-dialog__resume {
+    min-height: 3rem;
+    border-radius: var(--radius-sm);
+    font-weight: 700;
+}
+
+.resume-dialog__actions .text-button {
+    grid-column: auto;
+    grid-row: auto;
+    color: var(--ink);
+}
+
+.resume-dialog__resume {
+    border: 1px solid color-mix(in oklch, var(--accent) 70%, var(--line));
+    background: var(--accent);
+    color: oklch(0.16 0.02 82);
 }
 
 .library-grid {

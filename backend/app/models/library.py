@@ -12,6 +12,7 @@ class LibraryMovie(PlaybackModel):
     id: str = Field(pattern=r"^[a-f0-9]{24}$")
     title: str = Field(min_length=1, max_length=240)
     artwork_query: str = Field(min_length=1, max_length=512)
+    resume_seconds: int | None = Field(default=None, ge=0)
 
 
 class MovieLibraryResponse(PlaybackModel):
@@ -26,3 +27,4 @@ class PlayLibraryMovieRequest(CommandModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     movie_id: str = Field(alias="movieId", pattern=r"^[a-f0-9]{24}$")
+    resume: bool = False

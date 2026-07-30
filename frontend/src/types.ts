@@ -16,6 +16,7 @@ export interface LibraryMovie {
   id: string;
   title: string;
   artworkQuery: string;
+  resumeSeconds: number | null;
 }
 
 export interface MovieLibraryResponse {

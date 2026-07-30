@@ -9,6 +9,10 @@ from backend.app.errors import VlcAuthenticationFailed, VlcUnavailable
 from backend.app.main import create_app
 from backend.app.services.fake_vlc_client import FakeVlcClient
 from backend.app.services.movie_library import MovieLibrary
+from backend.app.services.playback_resume import (
+    PlaybackResumeStore,
+    PlaybackResumeTracker,
+)
 
 ACCESS_TOKEN = "phase-two-test-token-" + ("a" * 24)
 
@@ -38,6 +42,7 @@ def request_client(
     fake: FakeVlcClient,
     artwork: FakeArtworkLookup | None = None,
     movie_library: MovieLibrary | None = None,
+    playback_resume_tracker: PlaybackResumeTracker | None = None,
 ) -> tuple[AsyncClient, ASGITransport]:
     transport = ASGITransport(
         app=create_app(
@@ -45,6 +50,7 @@ def request_client(
             vlc_client=fake,
             artwork_lookup=artwork,
             movie_library=movie_library,
+            playback_resume_tracker=playback_resume_tracker,
         )
     )
     client = AsyncClient(transport=transport, base_url="http://localhost")
@@ -136,6 +142,40 @@ async def test_library_uses_opaque_ids_and_only_plays_listed_movies(
     assert played.json()["fullscreen"] is True
     assert stale.status_code == 404
     assert "tmp" not in stale.text
+
+
+async def test_library_lists_resume_points_and_seeks_only_when_requested(
+    tmp_path: Path,
+) -> None:
+    movie_path = tmp_path / "The.Quiet.Film.2024.mkv"
+    movie_path.touch()
+    store = PlaybackResumeStore(tmp_path / "state")
+    movie_library = MovieLibrary(tmp_path, store)
+    movie = (await movie_library.list_movies())[0]
+    await store.save(movie.id, 900)
+    fake = FakeVlcClient()
+    tracker = PlaybackResumeTracker(store)
+    client, _transport = request_client(
+        fake,
+        movie_library=movie_library,
+        playback_resume_tracker=tracker,
+    )
+
+    async with client:
+        listing = await client.get("/api/v1/library", headers=authorization())
+        resumed = await client.post(
+            "/api/v1/library/play",
+            headers=authorization(),
+            json={"movieId": movie.id, "resume": True},
+        )
+
+    assert listing.json()["movies"][0]["resumeSeconds"] == 900
+    assert resumed.status_code == 200
+    assert fake.commands == [
+        ("play_media", "The.Quiet.Film.2024.mkv"),
+        ("fullscreen", None),
+        ("seek_absolute", 900),
+    ]
 
 
 async def test_fixed_playback_and_audio_commands_return_updated_status() -> None:

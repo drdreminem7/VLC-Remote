@@ -449,7 +449,8 @@ describe("mobile remote", () => {
     const libraryMovie = {
       id: "a".repeat(24),
       title: "The Quiet Film",
-      artworkQuery: "The.Quiet.Film.2024.1080p"
+      artworkQuery: "The.Quiet.Film.2024.1080p",
+      resumeSeconds: null
     };
     const playingStatus = {
       ...pausedStatus,
@@ -465,7 +466,7 @@ describe("mobile remote", () => {
         return Promise.resolve(response({ movies: [libraryMovie] }));
       }
       if (url === "/api/v1/library/play") {
-        expect(options?.body).toBe(`{"movieId":"${libraryMovie.id}"}`);
+        expect(options?.body).toBe(`{"movieId":"${libraryMovie.id}","resume":false}`);
         return Promise.resolve(response(playingStatus));
       }
       return Promise.resolve(response(pausedStatus));
@@ -483,5 +484,43 @@ describe("mobile remote", () => {
       expect(screen.queryByRole("dialog", { name: "Movie library" })).not.toBeInTheDocument();
     });
     expect(fetchMock.mock.calls.map(([url]) => requestUrl(url))).toContain("/api/v1/library/play");
+  });
+
+  it("asks whether to resume a movie with saved progress", async () => {
+    window.localStorage.setItem("mac-vlc-remote.access-token.v1", TOKEN);
+    const libraryMovie = {
+      id: "b".repeat(24),
+      title: "The Quiet Film",
+      artworkQuery: "The.Quiet.Film.2024.1080p",
+      resumeSeconds: 900
+    };
+    const fetchMock = vi.fn<typeof fetch>().mockImplementation((input, options) => {
+      const url = requestUrl(input);
+      if (url.startsWith("/api/v1/artwork")) {
+        return Promise.resolve(response({ imageData: null }));
+      }
+      if (url === "/api/v1/library") {
+        return Promise.resolve(response({ movies: [libraryMovie] }));
+      }
+      if (url === "/api/v1/library/play") {
+        expect(options?.body).toBe(`{"movieId":"${libraryMovie.id}","resume":true}`);
+        return Promise.resolve(response(pausedStatus));
+      }
+      return Promise.resolve(response(pausedStatus));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<App />);
+    fireEvent.click(await screen.findByRole("button", { name: "Open remote settings" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Open movie library" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Play The Quiet Film" }));
+
+    expect(await screen.findByRole("dialog", { name: "Resume movie" })).toHaveTextContent(
+      "Resume from 15:00?"
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Resume" }));
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog", { name: "Resume movie" })).not.toBeInTheDocument();
+    });
   });
 });

@@ -66,7 +66,12 @@ describe("remote API client", () => {
         new Response(
           JSON.stringify({
             movies: [
-              { id: movieId, title: "The Quiet Film", artworkQuery: "The.Quiet.Film" }
+              {
+                id: movieId,
+                title: "The Quiet Film",
+                artworkQuery: "The.Quiet.Film",
+                resumeSeconds: null
+              }
             ]
           }),
           { status: 200 }
@@ -81,11 +86,13 @@ describe("remote API client", () => {
     if (movie === undefined) {
       throw new Error("Expected a movie in the library response");
     }
-    await api.playLibraryMovie(movie.id);
+    await api.playLibraryMovie(movie.id, false);
 
     expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/v1/library");
     expect(fetchMock.mock.calls[1]?.[0]).toBe("/api/v1/library/play");
-    expect(fetchMock.mock.calls[1]?.[1]?.body).toBe(`{"movieId":"${movieId}"}`);
+    expect(fetchMock.mock.calls[1]?.[1]?.body).toBe(
+      `{"movieId":"${movieId}","resume":false}`
+    );
   });
 
   it("converts the standard server error into a safe typed error", async () => {

@@ -86,8 +86,8 @@ the Dock app stops the remote and asks VLC to quit normally.
 ### Optional one-tap iPhone launch
 
 An iPhone Shortcut can start the Dock app over SSH, then open the pairing URL
-it receives from the Mac. The installer places its restricted helper in the
-user's Application Support directory, so the Shortcut does not need access to
+it receives from the Mac. The installer places its restricted helper in a
+private user-local command directory, so the Shortcut does not need access to
 the project folder on Desktop.
 
 Enable **System Settings → General → Sharing → Remote Login**, then configure

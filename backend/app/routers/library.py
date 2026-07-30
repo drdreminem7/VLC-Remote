@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends
 
 from backend.app.dependencies import (
     get_movie_library,
+    get_playback_resume_tracker,
     get_status_coordinator,
     get_vlc_client,
     require_access_token,
@@ -18,6 +19,7 @@ from backend.app.models.library import (
 from backend.app.models.playback import VlcStatus
 from backend.app.routers.controls import remember
 from backend.app.services.movie_library import MovieLibraryProtocol
+from backend.app.services.playback_resume import PlaybackResumeTracker
 from backend.app.services.status_coordinator import StatusCoordinator
 from backend.app.services.vlc_client import VlcClientProtocol
 
@@ -41,6 +43,7 @@ async def play_movie(
     movie_library: Annotated[MovieLibraryProtocol, Depends(get_movie_library)],
     vlc_client: Annotated[VlcClientProtocol, Depends(get_vlc_client)],
     coordinator: Annotated[StatusCoordinator, Depends(get_status_coordinator)],
+    tracker: Annotated[PlaybackResumeTracker, Depends(get_playback_resume_tracker)],
 ) -> VlcStatus:
     file_path = await movie_library.resolve_movie(request.movie_id)
     if file_path is None:
@@ -50,5 +53,14 @@ async def play_movie(
             message="That movie is no longer available in the local library.",
             retryable=False,
         )
+    await tracker.capture_before_replacing_media(vlc_client)
+    if not request.resume:
+        await tracker.clear(request.movie_id)
     subtitle_paths = await movie_library.subtitles_for(file_path)
-    return remember(await vlc_client.play_media(file_path, subtitle_paths), coordinator)
+    result = await vlc_client.play_media(file_path, subtitle_paths)
+    if request.resume:
+        resume_seconds = await tracker.resume_point(request.movie_id)
+        if resume_seconds is not None:
+            result = await vlc_client.seek_absolute(resume_seconds)
+    tracker.begin(request.movie_id)
+    return remember(result, coordinator)

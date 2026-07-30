@@ -23,7 +23,7 @@ export interface RemoteState {
   token: string | null;
   forgetPairing(): void;
   getLibrary: (signal?: AbortSignal) => Promise<MovieLibraryResponse | null>;
-  playLibraryMovie(movieId: string): Promise<VlcStatus | null>;
+  playLibraryMovie(movieId: string, resume: boolean): Promise<VlcStatus | null>;
   togglePlayback(): Promise<void>;
   play(): Promise<void>;
   pause(): Promise<void>;
@@ -332,9 +332,9 @@ export function useRemote(): RemoteState {
     token,
     forgetPairing,
     getLibrary,
-    playLibraryMovie: (movieId) =>
+    playLibraryMovie: (movieId, resume) =>
       runCommand("library-play", (activeApi, signal) =>
-        activeApi.playLibraryMovie(movieId, signal)
+        activeApi.playLibraryMovie(movieId, resume, signal)
       ),
     togglePlayback: () =>
       runCommand("toggle", (activeApi, signal) => activeApi.togglePlayback(signal)).then(

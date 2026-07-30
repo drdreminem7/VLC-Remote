@@ -29,6 +29,10 @@ from backend.app.services.movie_artwork import (
     MovieArtworkLookupProtocol,
 )
 from backend.app.services.movie_library import MovieLibrary, MovieLibraryProtocol
+from backend.app.services.playback_resume import (
+    PlaybackResumeStore,
+    PlaybackResumeTracker,
+)
 from backend.app.services.status_coordinator import StatusCoordinator
 from backend.app.services.vlc_client import (
     HttpxVlcClient,
@@ -49,6 +53,7 @@ def create_app(
     vlc_client: VlcClientProtocol | None = None,
     artwork_lookup: MovieArtworkLookupProtocol | None = None,
     movie_library: MovieLibraryProtocol | None = None,
+    playback_resume_tracker: PlaybackResumeTracker | None = None,
 ) -> FastAPI:
     """Build an application instance suitable for production and tests."""
 
@@ -66,8 +71,14 @@ def create_app(
             else None
         )
     )
+    active_resume_store = PlaybackResumeStore(
+        active_settings.vlc_remote_state_directory
+    )
+    active_resume_tracker = playback_resume_tracker or PlaybackResumeTracker(
+        active_resume_store
+    )
     active_movie_library = movie_library or MovieLibrary(
-        active_settings.movie_library_directory
+        active_settings.movie_library_directory, active_resume_store
     )
 
     @asynccontextmanager
@@ -91,6 +102,7 @@ def create_app(
     application.state.status_coordinator = StatusCoordinator()
     application.state.artwork_lookup = active_artwork_lookup
     application.state.movie_library = active_movie_library
+    application.state.playback_resume_tracker = active_resume_tracker
 
     application.add_middleware(
         TrustedHostMiddleware,

@@ -6,7 +6,7 @@ source_app="$project_root/dist/VLC Remote.app"
 destination_root="$HOME/Applications"
 destination_app="$destination_root/VLC Remote.app"
 shortcut_launcher_source="$project_root/scripts/start_remote_from_shortcut.sh"
-shortcut_launcher_root="$HOME/Library/Application Support/MacVlcRemote"
+shortcut_launcher_root="$HOME/.local/bin"
 shortcut_launcher_destination="$shortcut_launcher_root/vlc-remote-shortcut"
 
 if [ ! -d "$source_app" ]; then

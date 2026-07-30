@@ -196,7 +196,7 @@ function LibraryMovieCard({
   movie: LibraryMovie;
   accessToken: string | null;
   busy: boolean;
-  onPlay: (movieId: string) => void;
+  onPlay: (movie: LibraryMovie) => void;
 }) {
   const [posterUrl, setPosterUrl] = useState<string | null>(null);
 
@@ -216,7 +216,7 @@ function LibraryMovieCard({
       aria-label={`Play ${movie.title}`}
       className="library-movie"
       disabled={busy}
-      onClick={() => onPlay(movie.id)}
+      onClick={() => onPlay(movie)}
       type="button"
     >
       <span className="library-movie__artwork" aria-hidden="true">
@@ -242,6 +242,7 @@ export default function App() {
   const [libraryError, setLibraryError] = useState<string | null>(null);
   const [libraryVisibleCount, setLibraryVisibleCount] = useState(INITIAL_LIBRARY_MOVIES);
   const [libraryPlayingId, setLibraryPlayingId] = useState<string | null>(null);
+  const [resumeMovie, setResumeMovie] = useState<LibraryMovie | null>(null);
   const seekingRef = useRef(false);
   const seekPreviewRef = useRef<number | null>(null);
 
@@ -334,13 +335,21 @@ export default function App() {
     return () => controller.abort();
   }, [libraryOpen, remote.getLibrary]);
 
-  const playLibraryMovie = async (movieId: string) => {
+  const playLibraryMovie = async (movieId: string, resume = false) => {
     setLibraryPlayingId(movieId);
-    const nextStatus = await remote.playLibraryMovie(movieId);
+    const nextStatus = await remote.playLibraryMovie(movieId, resume);
     setLibraryPlayingId(null);
     if (nextStatus !== null) {
       setLibraryOpen(false);
     }
+  };
+
+  const selectLibraryMovie = (movie: LibraryMovie) => {
+    if (typeof movie.resumeSeconds === "number") {
+      setResumeMovie(movie);
+      return;
+    }
+    void playLibraryMovie(movie.id);
   };
 
   useEffect(() => {
@@ -352,12 +361,13 @@ export default function App() {
       if (event.key === "Escape") {
         setSettingsOpen(false);
         setLibraryOpen(false);
+        setResumeMovie(null);
       }
     };
 
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
-  }, [libraryOpen, settingsOpen]);
+  }, [libraryOpen, settingsOpen, resumeMovie]);
 
   const beginSeeking = () => {
     if (!canSeek) {
@@ -740,7 +750,7 @@ export default function App() {
                       busy={libraryPlayingId === movie.id}
                       key={movie.id}
                       movie={movie}
-                      onPlay={(movieId) => void playLibraryMovie(movieId)}
+                      onPlay={selectLibraryMovie}
                     />
                   ))}
                 </div>
@@ -757,6 +767,50 @@ export default function App() {
                 ) : null}
               </>
             ) : null}
+          </section>
+        </div>
+      ) : null}
+
+      {resumeMovie !== null ? (
+        <div className="resume-dialog" onMouseDown={() => setResumeMovie(null)}>
+          <section
+            aria-label="Resume movie"
+            aria-modal="true"
+            className="resume-dialog__sheet"
+            onMouseDown={(event) => event.stopPropagation()}
+            role="dialog"
+          >
+            <p className="eyebrow">Continue watching</p>
+            <h2>{resumeMovie.title}</h2>
+            <p>
+              Resume from <strong>{formatDuration(resumeMovie.resumeSeconds ?? 0)}</strong>?
+            </p>
+            <div className="resume-dialog__actions">
+              <button
+                className="text-button"
+                disabled={libraryPlayingId === resumeMovie.id}
+                onClick={() => {
+                  const movie = resumeMovie;
+                  setResumeMovie(null);
+                  void playLibraryMovie(movie.id);
+                }}
+                type="button"
+              >
+                Start over
+              </button>
+              <button
+                className="resume-dialog__resume"
+                disabled={libraryPlayingId === resumeMovie.id}
+                onClick={() => {
+                  const movie = resumeMovie;
+                  setResumeMovie(null);
+                  void playLibraryMovie(movie.id, true);
+                }}
+                type="button"
+              >
+                Resume
+              </button>
+            </div>
           </section>
         </div>
       ) : null}
