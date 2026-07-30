@@ -849,7 +849,9 @@ export default function App() {
                 className="text-button"
                 disabled={libraryPlayingId === resumeMovie.id}
                 onClick={() => {
+                  const movie = resumeMovie;
                   setResumeMovie(null);
+                  void playLibraryMovie(movie.id);
                 }}
                 type="button"
               >
@@ -859,9 +861,8 @@ export default function App() {
                 className="resume-dialog__resume"
                 disabled={libraryPlayingId === resumeMovie.id}
                 onClick={() => {
-                  const movie = resumeMovie;
                   setResumeMovie(null);
-                  void playLibraryMovie(movie.id);
+                  void remote.play();
                 }}
                 type="button"
               >

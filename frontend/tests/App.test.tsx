@@ -547,5 +547,10 @@ describe("mobile remote", () => {
     await waitFor(() => {
       expect(screen.queryByRole("dialog", { name: "Resume movie" })).not.toBeInTheDocument();
     });
+    await waitFor(() => {
+      expect(fetchMock.mock.calls.map(([url]) => requestUrl(url))).toContain(
+        "/api/v1/playback/play"
+      );
+    });
   });
 });
