@@ -324,13 +324,6 @@ export default function App() {
             <div className="touch-surface__artwork" aria-hidden="true">
               <img
                 alt=""
-                className="touch-surface__artwork-bleed"
-                loading="lazy"
-                src={posterUrl}
-              />
-              <img
-                alt=""
-                className="touch-surface__artwork-poster"
                 loading="lazy"
                 onError={() => setPoster(null)}
                 src={posterUrl}

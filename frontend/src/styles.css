@@ -331,6 +331,15 @@ svg {
     background: var(--surface-raised);
 }
 
+.touch-surface--with-artwork {
+    width: min(100%, 15rem);
+    min-height: 0;
+    flex: 0 0 auto;
+    align-self: center;
+    aspect-ratio: 2 / 3;
+    margin-block: auto;
+}
+
 .touch-surface__artwork::after {
     position: absolute;
     z-index: 2;
@@ -344,23 +353,11 @@ svg {
     pointer-events: none;
 }
 
-.touch-surface__artwork-bleed {
-    position: absolute;
-    inset: -1.5rem;
-    width: calc(100% + 3rem);
-    height: calc(100% + 3rem);
-    object-fit: cover;
-    filter: blur(1.25rem) saturate(0.56) contrast(0.88);
-    opacity: 0.68;
-}
-
-.touch-surface__artwork-poster {
+.touch-surface__artwork img {
     display: block;
-    position: relative;
-    z-index: 1;
     width: 100%;
     height: 100%;
-    object-fit: contain;
+    object-fit: cover;
     filter: saturate(0.76) contrast(0.94);
 }
 
@@ -921,6 +918,10 @@ svg {
         padding: var(--space-md);
     }
 
+    .touch-surface--with-artwork {
+        width: min(100%, 13rem);
+    }
+
     .touch-surface h1 {
         font-size: 3rem;
     }
@@ -972,6 +973,10 @@ svg {
 
     .touch-surface {
         min-height: 16rem;
+    }
+
+    .touch-surface--with-artwork {
+        width: min(100%, 11rem);
     }
 }
 
