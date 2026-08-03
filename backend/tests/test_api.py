@@ -7,12 +7,10 @@ from httpx import ASGITransport, AsyncClient
 from backend.app.config import Settings
 from backend.app.errors import VlcAuthenticationFailed, VlcUnavailable
 from backend.app.main import create_app
+from backend.app.models.library import OnlineSubtitle
 from backend.app.services.fake_vlc_client import FakeVlcClient
 from backend.app.services.movie_library import MovieLibrary
-from backend.app.services.playback_resume import (
-    PlaybackResumeStore,
-    PlaybackResumeTracker,
-)
+from backend.app.services.opensubtitles import OpenSubtitlesClientProtocol
 from backend.app.services.remote_shutdown import RemoteShutdownProtocol
 
 ACCESS_TOKEN = "phase-two-test-token-" + ("a" * 24)
@@ -34,6 +32,35 @@ class FakeRemoteShutdown(RemoteShutdownProtocol):
         self.requested = True
 
 
+class FakeOpenSubtitles(OpenSubtitlesClientProtocol):
+    def __init__(self) -> None:
+        self.searches: list[tuple[Path, str]] = []
+        self.downloads: list[tuple[Path, str]] = []
+
+    async def search(
+        self, movie_path: Path, language: str
+    ) -> tuple[OnlineSubtitle, ...]:
+        self.searches.append((movie_path, language))
+        return (
+            OnlineSubtitle(
+                id="b" * 24,
+                filename="The.Quiet.Film.en.srt",
+                language=language,
+                downloads=12,
+                trusted=True,
+            ),
+        )
+
+    async def download(self, movie_path: Path, subtitle_id: str) -> Path:
+        self.downloads.append((movie_path, subtitle_id))
+        downloaded = movie_path.with_suffix(".2.srt")
+        downloaded.touch()
+        return downloaded
+
+    async def aclose(self) -> None:
+        return None
+
+
 def api_settings() -> Settings:
     return Settings.model_validate(
         {
@@ -51,7 +78,7 @@ def request_client(
     fake: FakeVlcClient,
     artwork: FakeArtworkLookup | None = None,
     movie_library: MovieLibrary | None = None,
-    playback_resume_tracker: PlaybackResumeTracker | None = None,
+    opensubtitles_client: OpenSubtitlesClientProtocol | None = None,
     remote_shutdown: RemoteShutdownProtocol | None = None,
 ) -> tuple[AsyncClient, ASGITransport]:
     transport = ASGITransport(
@@ -60,7 +87,7 @@ def request_client(
             vlc_client=fake,
             artwork_lookup=artwork,
             movie_library=movie_library,
-            playback_resume_tracker=playback_resume_tracker,
+            opensubtitles_client=opensubtitles_client,
             remote_shutdown=remote_shutdown,
         )
     )
@@ -151,6 +178,16 @@ async def test_library_uses_opaque_ids_and_only_plays_listed_movies(
             headers=authorization(),
             json={"movieId": movie["id"]},
         )
+        subtitles = await client.get(
+            f"/api/v1/library/{movie['id']}/subtitles",
+            headers=authorization(),
+        )
+        subtitle = subtitles.json()["subtitles"][0]
+        activated = await client.post(
+            f"/api/v1/library/{movie['id']}/subtitles/activate",
+            headers=authorization(),
+            json={"subtitleId": subtitle["id"]},
+        )
         stale = await client.post(
             "/api/v1/library/play",
             headers=authorization(),
@@ -162,50 +199,60 @@ async def test_library_uses_opaque_ids_and_only_plays_listed_movies(
     assert str(tmp_path) not in listing.text
     assert movie["title"] == "The Quiet Film 2024"
     assert played.status_code == 200
+    assert subtitles.status_code == 200
+    assert subtitles.json()["movieId"] == movie["id"]
+    assert subtitles.json()["subtitles"] == [
+        {"id": subtitle["id"], "name": "The.Quiet.Film.2024.en.srt"}
+    ]
+    assert activated.status_code == 200
     assert played.json()["state"] == "playing"
     assert fake.commands == [
         ("play_media", "The.Quiet.Film.2024.mkv"),
         ("add_subtitle", "The.Quiet.Film.2024.en.srt"),
         ("fullscreen", None),
+        ("add_subtitle", "The.Quiet.Film.2024.en.srt"),
     ]
     assert played.json()["fullscreen"] is True
     assert stale.status_code == 404
     assert "tmp" not in stale.text
 
 
-async def test_library_lists_resume_points_and_seeks_only_when_requested(
+async def test_online_subtitles_are_scoped_to_a_selected_library_movie(
     tmp_path: Path,
 ) -> None:
     movie_path = tmp_path / "The.Quiet.Film.2024.mkv"
     movie_path.touch()
-    store = PlaybackResumeStore(tmp_path / "state")
-    movie_library = MovieLibrary(tmp_path, store)
-    movie = (await movie_library.list_movies())[0]
-    await store.save(movie.id, 900)
-    fake = FakeVlcClient()
-    tracker = PlaybackResumeTracker(store)
+    fake_vlc = FakeVlcClient()
+    fake_opensubtitles = FakeOpenSubtitles()
     client, _transport = request_client(
-        fake,
-        movie_library=movie_library,
-        playback_resume_tracker=tracker,
+        fake_vlc,
+        movie_library=MovieLibrary(tmp_path),
+        opensubtitles_client=fake_opensubtitles,
     )
 
     async with client:
         listing = await client.get("/api/v1/library", headers=authorization())
-        resumed = await client.post(
-            "/api/v1/library/play",
+        movie_id = listing.json()["movies"][0]["id"]
+        missing = await client.get(
+            f"/api/v1/library/{movie_id}/subtitles/online",
+        )
+        found = await client.get(
+            f"/api/v1/library/{movie_id}/subtitles/online",
             headers=authorization(),
-            json={"movieId": movie.id, "resume": True},
+            params={"language": "en"},
+        )
+        downloaded = await client.post(
+            f"/api/v1/library/{movie_id}/subtitles/online/{'b' * 24}/download",
+            headers=authorization(),
         )
 
-    assert listing.json()["movies"][0]["resumeSeconds"] == 900
-    assert resumed.status_code == 200
-    assert fake.commands == [
-        ("play_media", "The.Quiet.Film.2024.mkv"),
-        ("fullscreen", None),
-        ("seek_absolute", 900),
-        ("pause", None),
-    ]
+    assert missing.status_code == 401
+    assert found.status_code == 200
+    assert found.json()["subtitles"][0]["trusted"] is True
+    assert fake_opensubtitles.searches == [(movie_path.resolve(), "en")]
+    assert downloaded.status_code == 200
+    assert fake_opensubtitles.downloads == [(movie_path.resolve(), "b" * 24)]
+    assert fake_vlc.commands == [("add_subtitle", "The.Quiet.Film.2024.2.srt")]
 
 
 async def test_fixed_playback_and_audio_commands_return_updated_status() -> None:
@@ -221,6 +268,7 @@ async def test_fixed_playback_and_audio_commands_return_updated_status() -> None
             ("POST", "/api/v1/audio/volume", {"percent": 200}),
             ("POST", "/api/v1/audio/mute", {"muted": True}),
             ("POST", "/api/v1/playback/rate", {"rate": 1.25}),
+            ("POST", "/api/v1/tracks/subtitle/delay", {"seconds": 0.25}),
             ("POST", "/api/v1/playback/stop", None),
         ]
         responses = [
@@ -243,6 +291,7 @@ async def test_fixed_playback_and_audio_commands_return_updated_status() -> None
         ("set_volume", 200),
         ("set_muted", True),
         ("set_rate", 1.25),
+        ("set_subtitle_delay", 0.25),
         ("stop", None),
     ]
     assert responses[-1].json()["state"] == "stopped"

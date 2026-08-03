@@ -9,7 +9,13 @@ import {
   forgetStoredAccessToken,
   getInitialAccessToken
 } from "../auth";
-import type { ConnectionState, MovieLibraryResponse, VlcStatus } from "../types";
+import type {
+  ConnectionState,
+  MovieLibraryResponse,
+  MovieSubtitlesResponse,
+  OnlineSubtitlesResponse,
+  VlcStatus
+} from "../types";
 
 const VISIBLE_POLL_MS = 900;
 const HIDDEN_POLL_MS = 6000;
@@ -25,7 +31,15 @@ export interface RemoteState {
   forgetPairing(): void;
   endSession(): Promise<boolean>;
   getLibrary: (signal?: AbortSignal) => Promise<MovieLibraryResponse | null>;
-  playLibraryMovie(movieId: string, resume: boolean): Promise<VlcStatus | null>;
+  getFolderSubtitles: (movieId: string, signal?: AbortSignal) => Promise<MovieSubtitlesResponse | null>;
+  searchOnlineSubtitles: (
+    movieId: string,
+    language: string,
+    signal?: AbortSignal
+  ) => Promise<OnlineSubtitlesResponse | null>;
+  playLibraryMovie(movieId: string): Promise<VlcStatus | null>;
+  activateFolderSubtitle(movieId: string, subtitleId: string): Promise<VlcStatus | null>;
+  downloadOnlineSubtitle(movieId: string, subtitleId: string): Promise<VlcStatus | null>;
   togglePlayback(): Promise<void>;
   play(): Promise<void>;
   pause(): Promise<void>;
@@ -35,6 +49,7 @@ export interface RemoteState {
   setVolume(percent: number): Promise<void>;
   setMuted(muted: boolean): Promise<void>;
   setRate(rate: number): Promise<void>;
+  setSubtitleDelay(seconds: number): Promise<void>;
   selectAudioTrack(trackId: string): Promise<void>;
   selectSubtitleTrack(trackId: string): Promise<void>;
   nextItem(): Promise<void>;
@@ -363,6 +378,46 @@ export function useRemote(): RemoteState {
     [api]
   );
 
+  const getFolderSubtitles = useCallback(
+    async (movieId: string, signal?: AbortSignal): Promise<MovieSubtitlesResponse | null> => {
+      if (api === null || !navigator.onLine) {
+        return null;
+      }
+      try {
+        return await api.getFolderSubtitles(movieId, signal);
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          return null;
+        }
+        setMessage(error instanceof RemoteApiError ? error.message : "Could not load subtitles.");
+        return null;
+      }
+    },
+    [api]
+  );
+
+  const searchOnlineSubtitles = useCallback(
+    async (
+      movieId: string,
+      language: string,
+      signal?: AbortSignal
+    ): Promise<OnlineSubtitlesResponse | null> => {
+      if (api === null || !navigator.onLine) {
+        return null;
+      }
+      try {
+        return await api.searchOnlineSubtitles(movieId, language, signal);
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          return null;
+        }
+        setMessage(error instanceof RemoteApiError ? error.message : "Could not search OpenSubtitles.");
+        return null;
+      }
+    },
+    [api]
+  );
+
   return {
     connection,
     status,
@@ -373,9 +428,19 @@ export function useRemote(): RemoteState {
     forgetPairing,
     endSession,
     getLibrary,
-    playLibraryMovie: (movieId, resume) =>
+    getFolderSubtitles,
+    searchOnlineSubtitles,
+    playLibraryMovie: (movieId) =>
       runCommand("library-play", (activeApi, signal) =>
-        activeApi.playLibraryMovie(movieId, resume, signal)
+        activeApi.playLibraryMovie(movieId, signal)
+      ),
+    activateFolderSubtitle: (movieId, subtitleId) =>
+      runCommand("subtitle", (activeApi, signal) =>
+        activeApi.activateFolderSubtitle(movieId, subtitleId, signal)
+      ),
+    downloadOnlineSubtitle: (movieId, subtitleId) =>
+      runCommand("online-subtitle", (activeApi, signal) =>
+        activeApi.downloadOnlineSubtitle(movieId, subtitleId, signal)
       ),
     togglePlayback: () =>
       runCommand("toggle", (activeApi, signal) => activeApi.togglePlayback(signal)).then(
@@ -411,6 +476,10 @@ export function useRemote(): RemoteState {
       runCommand("rate", (activeApi, signal) => activeApi.setRate(rate, signal)).then(
         () => undefined
       ),
+    setSubtitleDelay: (seconds) =>
+      runCommand("subtitle-delay", (activeApi, signal) =>
+        activeApi.setSubtitleDelay(seconds, signal)
+      ).then(() => undefined),
     selectAudioTrack: (trackId) =>
       runCommand("audio-track", (activeApi, signal) =>
         activeApi.selectAudioTrack(trackId, signal)

@@ -45,6 +45,7 @@ async def test_client_uses_basic_auth_and_url_encoded_fixed_parameters() -> None
         await client.set_volume(70)
         await client.set_volume(200)
         await client.set_rate(1.25)
+        await client.set_subtitle_delay(0.25)
         await client.play_media(
             Path("/Users/example/Desktop/Movies/Film One.mkv"),
             (Path("/Users/example/Desktop/Movies/Film One.en.srt"),),
@@ -52,32 +53,81 @@ async def test_client_uses_basic_auth_and_url_encoded_fixed_parameters() -> None
     finally:
         await client.aclose()
 
-    assert [request.url.path for request in requests] == [
-        "/requests/status.json",
-        "/requests/status.json",
-        "/requests/status.json",
-        "/requests/status.json",
-        "/requests/status.json",
-        "/requests/status.json",
-        "/requests/status.json",
-        "/requests/status.json",
-    ]
+    assert [request.url.path for request in requests] == ["/requests/status.json"] * 8
     assert dict(requests[0].url.params) == {"command": "seek", "val": "-10S"}
     assert dict(requests[1].url.params) == {"command": "volume", "val": "179"}
     assert dict(requests[2].url.params) == {"command": "volume", "val": "512"}
     assert dict(requests[3].url.params) == {"command": "rate", "val": "1.25"}
-    assert dict(requests[4].url.params) == {
+    assert dict(requests[4].url.params) == {"command": "subdelay", "val": "0.25"}
+    assert dict(requests[5].url.params) == {
         "command": "in_play",
         "input": "file:///Users/example/Desktop/Movies/Film%20One.mkv",
-    }
-    assert dict(requests[5].url.params) == {
-        "command": "addsubtitle",
-        "val": "file:///Users/example/Desktop/Movies/Film%20One.en.srt",
+        "option": ":sub-file=/Users/example/Desktop/Movies/Film One.en.srt",
     }
     assert dict(requests[6].url.params) == {}
     assert dict(requests[7].url.params) == {"command": "fullscreen"}
     assert requests[0].headers["Authorization"].startswith("Basic ")
     assert "server-only-secret" not in str(requests[0].url)
+
+
+async def test_subtitle_fallback_reloads_current_movie_with_subfile() -> None:
+    requests: list[httpx.Request] = []
+    fallback_loaded = False
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal fallback_loaded
+        requests.append(request)
+        payload = fixture_payload()
+        category: dict[str, object] = {
+            "meta": {"title": "Film One", "filename": "Film One.mkv"},
+        }
+        payload["information"] = {"category": category}
+        if request.url.params.get("command") == "in_play":
+            fallback_loaded = True
+        if fallback_loaded:
+            payload["spu-es"] = "9"
+            category["Stream 9"] = {
+                "Type": "Subtitle",
+                "ID": "9",
+                "Title": "English",
+            }
+        return httpx.Response(200, json=payload)
+
+    client = HttpxVlcClient(
+        base_url="http://127.0.0.1:8080",
+        password="secret",
+        transport=httpx.MockTransport(handler),
+    )
+    try:
+        status = await client.add_subtitle(
+            Path("/Users/example/Desktop/Movies/Film One.en.srt"),
+            Path("/Users/example/Desktop/Movies/Film One.mkv"),
+        )
+    finally:
+        await client.aclose()
+
+    parameters = [dict(request.url.params) for request in requests]
+    assert {
+        "command": "addsubtitle",
+        "val": "file:///Users/example/Desktop/Movies/Film%20One.en.srt",
+    } in parameters
+    reload_request = next(
+        request
+        for request in requests
+        if request.url.params.get("command") == "in_play"
+    )
+    assert dict(reload_request.url.params) == {
+        "command": "in_play",
+        "input": "file:///Users/example/Desktop/Movies/Film%20One.mkv",
+        "option": ":sub-file=/Users/example/Desktop/Movies/Film One.en.srt",
+    }
+    assert reload_request.url.params.get_list("option") == [
+        ":sub-file=/Users/example/Desktop/Movies/Film One.en.srt",
+        ":fullscreen",
+        ":start-time=3724",
+    ]
+    assert {"command": "subtitle_track", "val": "9"} in parameters
+    assert status.tracks.subtitles[0].selected is True
 
 
 async def test_client_distinguishes_authentication_failure() -> None:

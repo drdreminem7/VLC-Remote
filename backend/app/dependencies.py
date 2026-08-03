@@ -10,7 +10,7 @@ from backend.app.config import Settings
 from backend.app.errors import ApiException
 from backend.app.services.movie_artwork import MovieArtworkLookupProtocol
 from backend.app.services.movie_library import MovieLibraryProtocol
-from backend.app.services.playback_resume import PlaybackResumeTracker
+from backend.app.services.opensubtitles import OpenSubtitlesClientProtocol
 from backend.app.services.remote_shutdown import RemoteShutdownProtocol
 from backend.app.services.status_coordinator import StatusCoordinator
 from backend.app.services.vlc_client import VlcClientProtocol
@@ -38,8 +38,8 @@ def get_movie_library(request: Request) -> MovieLibraryProtocol:
     return cast(MovieLibraryProtocol, request.app.state.movie_library)
 
 
-def get_playback_resume_tracker(request: Request) -> PlaybackResumeTracker:
-    return cast(PlaybackResumeTracker, request.app.state.playback_resume_tracker)
+def get_opensubtitles_client(request: Request) -> OpenSubtitlesClientProtocol:
+    return cast(OpenSubtitlesClientProtocol, request.app.state.opensubtitles_client)
 
 
 def get_remote_shutdown(request: Request) -> RemoteShutdownProtocol:

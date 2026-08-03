@@ -118,6 +118,14 @@ class FakeVlcClient:
             fullscreen=True,
         )
 
+    async def add_subtitle(
+        self, subtitle_path: Path, media_path: Path | None = None
+    ) -> VlcStatus:
+        self._raise_failure()
+        del media_path
+        self.commands.append(("add_subtitle", subtitle_path.name))
+        return self.status
+
     async def seek_relative(self, seconds: int) -> VlcStatus:
         self._raise_failure()
         self.commands.append(("seek_relative", seconds))
@@ -179,6 +187,11 @@ class FakeVlcClient:
         self._raise_failure()
         self.commands.append(("select_subtitle_track", track_id))
         return self._updated()
+
+    async def set_subtitle_delay(self, seconds: float) -> VlcStatus:
+        self._raise_failure()
+        self.commands.append(("set_subtitle_delay", seconds))
+        return self._updated(subtitle_delay_seconds=seconds)
 
     async def next_item(self) -> VlcStatus:
         self._raise_failure()

@@ -38,3 +38,12 @@ class RateRequest(CommandModel):
         StrictFloat,
         Field(ge=0.25, le=4.0, allow_inf_nan=False),
     ]
+
+
+class SubtitleDelayRequest(CommandModel):
+    """An absolute subtitle delay in seconds, bounded to a safe VLC range."""
+
+    seconds: Annotated[
+        StrictFloat,
+        Field(ge=-10.0, le=10.0, allow_inf_nan=False),
+    ]

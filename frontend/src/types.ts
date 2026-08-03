@@ -16,11 +16,38 @@ export interface LibraryMovie {
   id: string;
   title: string;
   artworkQuery: string;
-  resumeSeconds: number | null;
 }
 
 export interface MovieLibraryResponse {
   movies: readonly LibraryMovie[];
+}
+
+export interface FolderSubtitle {
+  id: string;
+  name: string;
+}
+
+export interface MovieSubtitlesResponse {
+  movieId: string;
+  subtitles: readonly FolderSubtitle[];
+}
+
+export interface OnlineSubtitle {
+  id: string;
+  filename: string;
+  language: string;
+  release: string | null;
+  downloads: number;
+  trusted: boolean;
+  hearingImpaired: boolean;
+  moviehashMatch: boolean;
+  releaseMatch: boolean;
+}
+
+export interface OnlineSubtitlesResponse {
+  movieId: string;
+  language: string;
+  subtitles: readonly OnlineSubtitle[];
 }
 
 export interface VlcStatus {
@@ -43,6 +70,7 @@ export interface VlcStatus {
     muted: boolean;
   };
   playbackRate: number;
+  subtitleDelaySeconds: number;
   tracks: {
     audio: readonly VlcTrack[];
     subtitles: readonly VlcTrack[];

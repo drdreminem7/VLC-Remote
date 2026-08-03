@@ -10,6 +10,8 @@ from backend.app.models.playback import (
     PlaybackCapabilities,
     PlaybackState,
     PlaybackTime,
+    Track,
+    Tracks,
     VlcStatus,
 )
 from backend.app.services.vlc_volume import raw_volume_to_visible_percent
@@ -49,11 +51,37 @@ def _metadata(raw: Mapping[str, object]) -> Mapping[str, object]:
     return metadata
 
 
+def _category(raw: Mapping[str, object]) -> Mapping[str, object]:
+    information = raw.get("information")
+    if not isinstance(information, Mapping):
+        return {}
+    category = information.get("category")
+    return category if isinstance(category, Mapping) else {}
+
+
 def _text(value: object) -> str | None:
     if not isinstance(value, str):
         return None
     stripped = value.strip()
     return stripped or None
+
+
+def _stream_id(value: object) -> str | None:
+    text = _text(value)
+    if text is not None:
+        return text
+    if isinstance(value, int) and not isinstance(value, bool):
+        return str(value)
+    return None
+
+
+def _stream_number(key: str) -> str | None:
+    """Return the `N` in VLC's `Stream N` status key used by track commands."""
+
+    parts = key.rsplit(" ", 1)
+    if len(parts) == 2 and parts[1].isdigit():
+        return parts[1]
+    return None
 
 
 def _boolean(value: object) -> bool:
@@ -64,6 +92,53 @@ def _boolean(value: object) -> bool:
     if isinstance(value, str):
         return value.casefold() in {"1", "true", "yes"}
     return False
+
+
+def _tracks(raw: Mapping[str, object]) -> Tracks:
+    """Extract selectable audio and subtitle streams from VLC's loose status map."""
+
+    selected_audio_id = _stream_id(raw.get("audio-es"))
+    selected_id = _stream_id(raw.get("spu-es")) or _stream_id(raw.get("spu"))
+    audio: list[Track] = []
+    subtitles: list[Track] = []
+    for key, value in _category(raw).items():
+        if not isinstance(key, str) or not isinstance(value, Mapping):
+            continue
+        stream_type = _text(value.get("Type")) or _text(value.get("type")) or ""
+        normalized_type = stream_type.casefold()
+        is_audio = "audio" in normalized_type
+        is_subtitle = "subtitle" in normalized_type or "subpicture" in normalized_type
+        if not is_audio and not is_subtitle:
+            continue
+        # VLC's track commands explicitly use the number in `Stream N`, not
+        # necessarily the decoder's own `ID` field.
+        stream_id = (
+            _stream_number(key)
+            or _stream_id(value.get("ID"))
+            or _stream_id(value.get("id"))
+        )
+        if stream_id is None:
+            continue
+        name = (
+            _text(value.get("Title"))
+            or _text(value.get("title"))
+            or _text(value.get("Language"))
+            or _text(value.get("language"))
+            or f"{'Audio' if is_audio else 'Subtitle'} {stream_id}"
+        )
+        if is_audio:
+            audio.append(
+                Track(
+                    id=stream_id,
+                    name=name,
+                    selected=stream_id == selected_audio_id,
+                )
+            )
+        elif is_subtitle:
+            subtitles.append(
+                Track(id=stream_id, name=name, selected=stream_id == selected_id)
+            )
+    return Tracks(audio=tuple(audio), subtitles=tuple(subtitles))
 
 
 def parse_vlc_status(raw: Mapping[str, object]) -> VlcStatus:
@@ -101,8 +176,15 @@ def parse_vlc_status(raw: Mapping[str, object]) -> VlcStatus:
 
     raw_rate = _number(raw.get("rate"))
     playback_rate = raw_rate if raw_rate is not None and raw_rate > 0 else 1.0
+    raw_subtitle_delay = _number(raw.get("subtitledelay"))
+    subtitle_delay_seconds = (
+        min(10.0, max(-10.0, raw_subtitle_delay))
+        if raw_subtitle_delay is not None
+        else 0.0
+    )
 
     metadata = _metadata(raw)
+    tracks = _tracks(raw)
     title = _text(metadata.get("title"))
     filename = _text(metadata.get("filename"))
     if title is None:
@@ -118,10 +200,14 @@ def parse_vlc_status(raw: Mapping[str, object]) -> VlcStatus:
         ),
         audio=AudioStatus(volume_percent=volume_percent, muted=muted),
         playback_rate=playback_rate,
+        subtitle_delay_seconds=subtitle_delay_seconds,
+        tracks=tracks,
         capabilities=PlaybackCapabilities(
             seek=duration_seconds is not None and duration_seconds > 0,
             volume=raw_volume is not None,
             rate=raw_rate is not None,
+            audio_track_selection=bool(tracks.audio),
+            subtitle_track_selection=bool(tracks.subtitles),
         ),
         fullscreen=_boolean(raw.get("fullscreen")),
         updated_at=datetime.now(UTC),

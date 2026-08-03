@@ -86,6 +86,9 @@ class VlcStatus(PlaybackModel):
     time: PlaybackTime
     audio: AudioStatus
     playback_rate: float = Field(gt=0, allow_inf_nan=False)
+    subtitle_delay_seconds: float = Field(
+        default=0.0, ge=-10.0, le=10.0, allow_inf_nan=False
+    )
     tracks: Tracks = Tracks()
     capabilities: PlaybackCapabilities
     fullscreen: bool = False

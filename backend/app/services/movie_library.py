@@ -7,8 +7,7 @@ from hashlib import sha256
 from pathlib import Path
 from typing import Protocol
 
-from backend.app.models.library import LibraryMovie
-from backend.app.services.playback_resume import PlaybackResumeStore
+from backend.app.models.library import FolderSubtitle, LibraryMovie
 
 SUPPORTED_MOVIE_SUFFIXES = frozenset(
     {
@@ -61,6 +60,12 @@ class MovieLibraryProtocol(Protocol):
 
     async def subtitles_for(self, movie_path: Path) -> tuple[Path, ...]: ...
 
+    async def folder_subtitles(self, movie_id: str) -> tuple[FolderSubtitle, ...]: ...
+
+    async def resolve_folder_subtitle(
+        self, movie_id: str, subtitle_id: str
+    ) -> Path | None: ...
+
 
 @dataclass(frozen=True, slots=True)
 class _LibraryEntry:
@@ -71,21 +76,11 @@ class _LibraryEntry:
 class MovieLibrary:
     """List supported files below one configured directory, never arbitrary paths."""
 
-    def __init__(
-        self, directory: Path, resume_store: PlaybackResumeStore | None = None
-    ) -> None:
+    def __init__(self, directory: Path) -> None:
         self._directory = directory.expanduser()
-        self._resume_store = resume_store
 
     async def list_movies(self) -> tuple[LibraryMovie, ...]:
-        entries = await asyncio.to_thread(self._entries)
-        points = await self._resume_store.points() if self._resume_store else {}
-        return tuple(
-            entry.movie.model_copy(
-                update={"resume_seconds": points.get(entry.movie.id)}
-            )
-            for entry in entries
-        )
+        return await asyncio.to_thread(self._movies)
 
     async def resolve_movie(self, movie_id: str) -> Path | None:
         entries = await asyncio.to_thread(self._entries)
@@ -98,6 +93,24 @@ class MovieLibrary:
         """Return only safe external subtitle files beside a selected movie."""
 
         return await asyncio.to_thread(self._subtitle_paths, movie_path)
+
+    async def folder_subtitles(self, movie_id: str) -> tuple[FolderSubtitle, ...]:
+        entry = await asyncio.to_thread(self._entry, movie_id)
+        if entry is None:
+            return ()
+        return await asyncio.to_thread(self._folder_subtitles, entry.path)
+
+    async def resolve_folder_subtitle(
+        self, movie_id: str, subtitle_id: str
+    ) -> Path | None:
+        entry = await asyncio.to_thread(self._entry, movie_id)
+        if entry is None:
+            return None
+        subtitles = await asyncio.to_thread(self._subtitle_paths, entry.path)
+        for subtitle_path in subtitles:
+            if _subtitle_id(self._relative(subtitle_path)) == subtitle_id:
+                return subtitle_path
+        return None
 
     def _entries(self) -> tuple[_LibraryEntry, ...]:
         try:
@@ -140,6 +153,25 @@ class MovieLibrary:
 
         return tuple(sorted(entries, key=lambda entry: entry.movie.title.casefold()))
 
+    def _movies(self) -> tuple[LibraryMovie, ...]:
+        return tuple(entry.movie for entry in self._entries())
+
+    def _entry(self, movie_id: str) -> _LibraryEntry | None:
+        return next(
+            (entry for entry in self._entries() if entry.movie.id == movie_id), None
+        )
+
+    def _relative(self, path: Path) -> Path:
+        return path.resolve(strict=True).relative_to(
+            self._directory.resolve(strict=True)
+        )
+
+    def _folder_subtitles(self, movie_path: Path) -> tuple[FolderSubtitle, ...]:
+        return tuple(
+            FolderSubtitle(id=_subtitle_id(self._relative(path)), name=path.name)
+            for path in self._subtitle_paths(movie_path)
+        )
+
     def _subtitle_paths(self, movie_path: Path) -> tuple[Path, ...]:
         try:
             root = self._directory.resolve(strict=True)
@@ -176,7 +208,11 @@ class MovieLibrary:
 def _movie_id(relative_path: Path) -> str:
     """Return an opaque stable identifier without exposing the local path."""
 
-    return sha256(relative_path.as_posix().encode("utf-8")).hexdigest()[:24]
+    return sha256(relative_path.as_posix().encode()).hexdigest()[:24]
+
+
+def _subtitle_id(relative_path: Path) -> str:
+    return sha256(f"subtitle:{relative_path.as_posix()}".encode()).hexdigest()[:24]
 
 
 def _display_title(stem: str) -> str:

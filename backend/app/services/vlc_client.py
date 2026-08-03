@@ -13,7 +13,7 @@ from backend.app.errors import (
     VlcCommandFailed,
     VlcUnavailable,
 )
-from backend.app.models.playback import VlcStatus
+from backend.app.models.playback import Track, VlcStatus
 from backend.app.services.vlc_parser import parse_vlc_status
 from backend.app.services.vlc_volume import visible_percent_to_raw_volume
 
@@ -22,6 +22,7 @@ PLAYBACK_READY_DELAY_SECONDS = 0.1
 FULLSCREEN_READY_DELAY_SECONDS = 0.35
 FULLSCREEN_CONFIRMATION_ATTEMPTS = 5
 FULLSCREEN_CONFIRMATION_DELAY_SECONDS = 0.1
+POSITION_RESTORE_TOLERANCE_SECONDS = 3
 
 
 class VlcClientProtocol(Protocol):
@@ -43,6 +44,10 @@ class VlcClientProtocol(Protocol):
         self, file_path: Path, subtitle_paths: tuple[Path, ...] = ()
     ) -> VlcStatus: ...
 
+    async def add_subtitle(
+        self, subtitle_path: Path, media_path: Path | None = None
+    ) -> VlcStatus: ...
+
     async def seek_relative(self, seconds: int) -> VlcStatus: ...
 
     async def seek_absolute(self, seconds: int) -> VlcStatus: ...
@@ -56,6 +61,8 @@ class VlcClientProtocol(Protocol):
     async def select_audio_track(self, track_id: str) -> VlcStatus: ...
 
     async def select_subtitle_track(self, track_id: str) -> VlcStatus: ...
+
+    async def set_subtitle_delay(self, seconds: float) -> VlcStatus: ...
 
     async def next_item(self) -> VlcStatus: ...
 
@@ -102,6 +109,12 @@ class UnconfiguredVlcClient:
         del file_path, subtitle_paths
         return await self._unavailable()
 
+    async def add_subtitle(
+        self, subtitle_path: Path, media_path: Path | None = None
+    ) -> VlcStatus:
+        del subtitle_path, media_path
+        return await self._unavailable()
+
     async def seek_relative(self, seconds: int) -> VlcStatus:
         del seconds
         return await self._unavailable()
@@ -128,6 +141,10 @@ class UnconfiguredVlcClient:
 
     async def select_subtitle_track(self, track_id: str) -> VlcStatus:
         del track_id
+        return await self._unavailable()
+
+    async def set_subtitle_delay(self, seconds: float) -> VlcStatus:
+        del seconds
         return await self._unavailable()
 
     async def next_item(self) -> VlcStatus:
@@ -189,12 +206,14 @@ class HttpxVlcClient:
         command: str | None = None,
         value_name: str | None = None,
         value: str | None = None,
+        options: tuple[str, ...] = (),
     ) -> VlcStatus:
-        parameters: dict[str, str] = {}
+        parameters: list[tuple[str, str | int | float | bool | None]] = []
         if command is not None:
-            parameters["command"] = command
+            parameters.append(("command", command))
         if value_name is not None and value is not None:
-            parameters[value_name] = value
+            parameters.append((value_name, value))
+        parameters.extend(("option", option) for option in options)
 
         try:
             response = await self._http_client.get(
@@ -251,6 +270,9 @@ class HttpxVlcClient:
             command="in_play",
             value_name="input",
             value=file_path.as_uri(),
+            options=tuple(
+                f":sub-file={subtitle_path}" for subtitle_path in subtitle_paths
+            ),
         )
         for _ in range(PLAYBACK_READY_ATTEMPTS):
             if status.state.value not in {"opening", "buffering"}:
@@ -258,17 +280,106 @@ class HttpxVlcClient:
             await asyncio.sleep(PLAYBACK_READY_DELAY_SECONDS)
             status = await self.get_status()
 
-        for subtitle_path in subtitle_paths:
-            try:
-                status = await self._request_status(
-                    command="addsubtitle",
-                    value_name="val",
-                    value=subtitle_path.as_uri(),
-                )
-            except VlcCommandFailed:
-                continue
-
         return await self._ensure_fullscreen(status)
+
+    async def _wait_for_new_subtitle_track(
+        self, status: VlcStatus, existing_ids: set[str]
+    ) -> tuple[VlcStatus, Track | None]:
+        """Wait briefly for VLC to publish the stream created by an async command."""
+
+        for _ in range(6):
+            new_tracks = [
+                track
+                for track in status.tracks.subtitles
+                if track.id not in existing_ids
+            ]
+            if new_tracks:
+                return status, new_tracks[-1]
+            await asyncio.sleep(0.1)
+            status = await self.get_status()
+        return status, None
+
+    async def _wait_for_ready_playback(self, status: VlcStatus) -> VlcStatus:
+        for _ in range(PLAYBACK_READY_ATTEMPTS):
+            if status.state.value not in {"opening", "buffering"}:
+                break
+            await asyncio.sleep(PLAYBACK_READY_DELAY_SECONDS)
+            status = await self.get_status()
+        return status
+
+    async def _restore_playback_position(
+        self, status: VlcStatus, target_seconds: int
+    ) -> VlcStatus:
+        """Restore playback only after a reloaded VLC input is ready for seeking."""
+
+        await asyncio.sleep(FULLSCREEN_READY_DELAY_SECONDS)
+        status = await self.get_status()
+        if (
+            abs(status.time.elapsed_seconds - target_seconds)
+            <= POSITION_RESTORE_TOLERANCE_SECONDS
+        ):
+            return status
+        status = await self.seek_absolute(target_seconds)
+        for _ in range(FULLSCREEN_CONFIRMATION_ATTEMPTS):
+            if (
+                abs(status.time.elapsed_seconds - target_seconds)
+                <= POSITION_RESTORE_TOLERANCE_SECONDS
+            ):
+                return status
+            await asyncio.sleep(FULLSCREEN_CONFIRMATION_DELAY_SECONDS)
+            status = await self.get_status()
+        return status
+
+    async def add_subtitle(
+        self, subtitle_path: Path, media_path: Path | None = None
+    ) -> VlcStatus:
+        """Add and select a subtitle, with VLC input-option fallback if needed."""
+
+        current = await self.get_status()
+        existing_ids = {track.id for track in current.tracks.subtitles}
+        status = await self._request_status(
+            command="addsubtitle",
+            value_name="val",
+            value=subtitle_path.as_uri(),
+        )
+        status, added_track = await self._wait_for_new_subtitle_track(
+            status, existing_ids
+        )
+        if added_track is not None:
+            return await self.select_subtitle_track(added_track.id)
+
+        if (
+            media_path is None
+            or current.state.value == "stopped"
+            or current.media.filename != media_path.name
+        ):
+            raise VlcCommandFailed("VLC did not confirm that the subtitle was loaded")
+
+        reload_options = [f":sub-file={subtitle_path}", ":fullscreen"]
+        if current.time.elapsed_seconds > 0:
+            reload_options.append(f":start-time={current.time.elapsed_seconds}")
+        status = await self._request_status(
+            command="in_play",
+            value_name="input",
+            value=media_path.as_uri(),
+            # This is an input option, not VLC's toggle-style `fullscreen`
+            # command. It keeps the macOS native player full-screen during the
+            # reload even when HTTP reports a stale fullscreen flag.
+            options=tuple(reload_options),
+        )
+        status = await self._wait_for_ready_playback(status)
+        if current.time.elapsed_seconds > 0:
+            status = await self._restore_playback_position(
+                status, current.time.elapsed_seconds
+            )
+        if current.state.value == "paused":
+            status = await self.pause()
+        status, added_track = await self._wait_for_new_subtitle_track(
+            status, existing_ids
+        )
+        if added_track is None:
+            raise VlcCommandFailed("VLC did not confirm that the subtitle was loaded")
+        return await self.select_subtitle_track(added_track.id)
 
     async def _ensure_fullscreen(self, status: VlcStatus) -> VlcStatus:
         """Enter fullscreen after VLC has had time to create its video output."""
@@ -343,6 +454,13 @@ class HttpxVlcClient:
             command="subtitle_track",
             value_name="val",
             value=track_id,
+        )
+
+    async def set_subtitle_delay(self, seconds: float) -> VlcStatus:
+        return await self._request_status(
+            command="subdelay",
+            value_name="val",
+            value=f"{seconds:.2f}",
         )
 
     async def next_item(self) -> VlcStatus:

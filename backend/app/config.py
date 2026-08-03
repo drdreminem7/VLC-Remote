@@ -30,6 +30,9 @@ class Settings(BaseSettings):
     vlc_http_password: SecretStr | None = None
     vlc_remote_access_token: SecretStr | None = None
     tmdb_api_token: SecretStr | None = None
+    opensubtitles_username: SecretStr | None = None
+    opensubtitles_password: SecretStr | None = None
+    opensubtitles_api_key: SecretStr | None = None
     movie_library_directory: Path = Field(
         default_factory=lambda: Path.home() / "Desktop" / "Movies",
         exclude=True,
@@ -44,6 +47,9 @@ class Settings(BaseSettings):
         "vlc_http_password",
         "vlc_remote_access_token",
         "tmdb_api_token",
+        "opensubtitles_username",
+        "opensubtitles_password",
+        "opensubtitles_api_key",
         mode="before",
     )
     @classmethod
@@ -105,6 +111,19 @@ class Settings(BaseSettings):
         """Whether enough secret material exists to construct the VLC client."""
 
         return self.get_vlc_http_password() is not None
+
+    @property
+    def opensubtitles_is_configured(self) -> bool:
+        """Whether online subtitle search can authenticate from Mac-only secrets."""
+
+        return all(
+            value is not None
+            for value in (
+                self.opensubtitles_username,
+                self.opensubtitles_password,
+                self.opensubtitles_api_key,
+            )
+        )
 
     def get_access_token(self) -> SecretStr:
         """Return the configured token or create the protected local token file."""

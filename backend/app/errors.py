@@ -41,6 +41,22 @@ class VlcUnsupportedOperation(VlcError):
     """The installed compatibility profile does not support an operation."""
 
 
+class OpenSubtitlesError(Exception):
+    """Base class for failures at the OpenSubtitles boundary."""
+
+
+class OpenSubtitlesNotConfigured(OpenSubtitlesError):
+    """The Mac-only account credentials have not been configured."""
+
+
+class OpenSubtitlesAuthenticationFailed(OpenSubtitlesError):
+    """OpenSubtitles rejected the Mac-only account credentials."""
+
+
+class OpenSubtitlesUnavailable(OpenSubtitlesError):
+    """OpenSubtitles could not be reached or returned an unusable response."""
+
+
 def error_response(exception: ApiException) -> JSONResponse:
     """Build the standard JSON error envelope."""
 
@@ -125,6 +141,36 @@ async def vlc_exception_handler(
             status_code=502,
             code="VLC_COMMAND_FAILED",
             message="VLC could not complete the requested operation.",
+            retryable=True,
+        )
+    return error_response(api_exception)
+
+
+async def opensubtitles_exception_handler(
+    _request: Request,
+    exception: Exception,
+) -> JSONResponse:
+    if not isinstance(exception, OpenSubtitlesError):  # pragma: no cover
+        raise exception
+    if isinstance(exception, OpenSubtitlesNotConfigured):
+        api_exception = ApiException(
+            status_code=409,
+            code="OPENSUBTITLES_NOT_CONFIGURED",
+            message="Online subtitles are not configured on this Mac.",
+            retryable=False,
+        )
+    elif isinstance(exception, OpenSubtitlesAuthenticationFailed):
+        api_exception = ApiException(
+            status_code=502,
+            code="OPENSUBTITLES_AUTHENTICATION_FAILED",
+            message="OpenSubtitles rejected the account configured on this Mac.",
+            retryable=False,
+        )
+    else:
+        api_exception = ApiException(
+            status_code=503,
+            code="OPENSUBTITLES_UNAVAILABLE",
+            message="OpenSubtitles could not be reached. Try again shortly.",
             retryable=True,
         )
     return error_response(api_exception)

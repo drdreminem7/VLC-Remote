@@ -56,6 +56,29 @@ async def test_library_returns_only_valid_subtitles_beside_the_selected_movie(
     assert subtitles == (commentary_subtitle.resolve(), english_subtitle.resolve())
 
 
+async def test_library_issues_opaque_ids_for_subtitles_beside_a_selected_movie(
+    tmp_path: Path,
+) -> None:
+    movie_path = tmp_path / "Film" / "Film.mkv"
+    movie_path.parent.mkdir()
+    movie_path.touch()
+    subtitle_path = movie_path.with_suffix(".en.srt")
+    subtitle_path.touch()
+    library = MovieLibrary(tmp_path)
+    movie = (await library.list_movies())[0]
+
+    subtitles = await library.folder_subtitles(movie.id)
+
+    assert len(subtitles) == 1
+    assert subtitles[0].name == "Film.en.srt"
+    assert str(tmp_path) not in subtitles[0].model_dump_json()
+    assert (
+        await library.resolve_folder_subtitle(movie.id, subtitles[0].id)
+        == subtitle_path.resolve()
+    )
+    assert await library.resolve_folder_subtitle(movie.id, "0" * 24) is None
+
+
 async def test_missing_library_is_an_empty_library(tmp_path: Path) -> None:
     library = MovieLibrary(tmp_path / "does-not-exist")
 

@@ -236,15 +236,14 @@ test("opens the movie library with one touch and plays a listed movie", async ({
   const movie = {
     id: "a".repeat(24),
     title: "The Quiet Film",
-    artworkQuery: "The.Quiet.Film.2024.1080p",
-    resumeSeconds: null
+    artworkQuery: "The.Quiet.Film.2024.1080p"
   };
   await mockOnlineStatus(page);
   await page.route("**/api/v1/library", (route) =>
     route.fulfill({ contentType: "application/json", body: JSON.stringify({ movies: [movie] }) })
   );
   await page.route("**/api/v1/library/play", async (route) => {
-    expect(route.request().postDataJSON()).toEqual({ movieId: movie.id, resume: false });
+    expect(route.request().postDataJSON()).toEqual({ movieId: movie.id });
     await route.fulfill({
       contentType: "application/json",
       body: JSON.stringify({
@@ -262,4 +261,62 @@ test("opens the movie library with one touch and plays a listed movie", async ({
   await expect(page.getByRole("dialog", { name: "Movie library" })).toBeVisible();
   await page.getByRole("button", { name: "Play The Quiet Film" }).click();
   await expect(page.getByRole("dialog", { name: "Movie library" })).toHaveCount(0);
+});
+
+test("searches OpenSubtitles and downloads a selected result beside the movie", async ({ page }) => {
+  const movie = {
+    id: "c".repeat(24),
+    title: "The Quiet Film",
+    artworkQuery: "The.Quiet.Film.2024"
+  };
+  const subtitleId = "d".repeat(24);
+  await mockOnlineStatus(page);
+  await page.route("**/api/v1/library", (route) =>
+    route.fulfill({ contentType: "application/json", body: JSON.stringify({ movies: [movie] }) })
+  );
+  await page.route("**/api/v1/library/play", (route) =>
+    route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ ...pausedStatus, media: { title: movie.title, filename: "film.mkv" } })
+    })
+  );
+  await page.route(`**/api/v1/library/${movie.id}/subtitles`, (route) =>
+    route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ movieId: movie.id, subtitles: [] })
+    })
+  );
+  await page.route(`**/api/v1/library/${movie.id}/subtitles/online?*`, (route) =>
+    route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        movieId: movie.id,
+        language: "en",
+        subtitles: [
+          {
+            id: subtitleId,
+            filename: "The.Quiet.Film.en.srt",
+            language: "en",
+            release: "The Quiet Film",
+            downloads: 12,
+            trusted: true,
+            hearingImpaired: false,
+            moviehashMatch: true
+          }
+        ]
+      })
+    })
+  );
+  await page.route(`**/api/v1/library/${movie.id}/subtitles/online/${subtitleId}/download`, (route) =>
+    route.fulfill({ contentType: "application/json", body: JSON.stringify(pausedStatus) })
+  );
+
+  await page.goto(`/#token=${TOKEN}`);
+  await page.locator(".touch-surface").tap();
+  await page.getByRole("button", { name: "Play The Quiet Film" }).click();
+  await page.getByRole("button", { name: "Open remote settings" }).click();
+  await page.getByRole("button", { name: "Open subtitles" }).click();
+  await page.getByRole("button", { name: "Search" }).click();
+  await expect(page.getByText("The.Quiet.Film.en.srt")).toBeVisible();
+  await page.getByRole("button", { name: "Download" }).click();
 });

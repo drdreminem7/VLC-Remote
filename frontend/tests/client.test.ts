@@ -83,8 +83,7 @@ describe("remote API client", () => {
               {
                 id: movieId,
                 title: "The Quiet Film",
-                artworkQuery: "The.Quiet.Film",
-                resumeSeconds: null
+                artworkQuery: "The.Quiet.Film"
               }
             ]
           }),
@@ -100,12 +99,79 @@ describe("remote API client", () => {
     if (movie === undefined) {
       throw new Error("Expected a movie in the library response");
     }
-    await api.playLibraryMovie(movie.id, false);
+    await api.playLibraryMovie(movie.id);
 
     expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/v1/library");
     expect(fetchMock.mock.calls[1]?.[0]).toBe("/api/v1/library/play");
     expect(fetchMock.mock.calls[1]?.[1]?.body).toBe(
-      `{"movieId":"${movieId}","resume":false}`
+      `{"movieId":"${movieId}"}`
+    );
+  });
+
+  it("lists and activates subtitle files through the selected movie's opaque ID", async () => {
+    const movieId = "e".repeat(24);
+    const subtitleId = "f".repeat(24);
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            movieId,
+            subtitles: [{ id: subtitleId, name: "Example.en.srt" }]
+          }),
+          { status: 200 }
+        )
+      )
+      .mockResolvedValueOnce(new Response(JSON.stringify(status), { status: 200 }));
+    const api = createRemoteApi(TOKEN, fetchMock);
+
+    const subtitles = await api.getFolderSubtitles(movieId);
+    await api.activateFolderSubtitle(movieId, subtitles.subtitles[0]?.id ?? subtitleId);
+
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(`/api/v1/library/${movieId}/subtitles`);
+    expect(fetchMock.mock.calls[1]?.[0]).toBe(
+      `/api/v1/library/${movieId}/subtitles/activate`
+    );
+    expect(fetchMock.mock.calls[1]?.[1]?.body).toBe(`{"subtitleId":"${subtitleId}"}`);
+  });
+
+  it("searches and downloads an online subtitle only through a selected movie", async () => {
+    const movieId = "a".repeat(24);
+    const subtitleId = "b".repeat(24);
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            movieId,
+            language: "en",
+            subtitles: [
+              {
+                id: subtitleId,
+                filename: "Example.en.srt",
+                language: "en",
+                release: null,
+                downloads: 12,
+                trusted: true,
+                hearingImpaired: false,
+                moviehashMatch: false
+              }
+            ]
+          }),
+          { status: 200 }
+        )
+      )
+      .mockResolvedValueOnce(new Response(JSON.stringify(status), { status: 200 }));
+    const api = createRemoteApi(TOKEN, fetchMock);
+
+    const results = await api.searchOnlineSubtitles(movieId, "en");
+    await api.downloadOnlineSubtitle(movieId, results.subtitles[0]?.id ?? subtitleId);
+
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      `/api/v1/library/${movieId}/subtitles/online?language=en`
+    );
+    expect(fetchMock.mock.calls[1]?.[0]).toBe(
+      `/api/v1/library/${movieId}/subtitles/online/${subtitleId}/download`
     );
   });
 

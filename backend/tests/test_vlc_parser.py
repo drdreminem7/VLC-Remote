@@ -66,6 +66,36 @@ def test_vlc_maximum_raw_volume_maps_to_200_percent() -> None:
     assert status.audio.volume_percent == 200
 
 
+def test_audio_and_subtitle_streams_are_normalized_for_selection() -> None:
+    raw = load_fixture("status_playing.json")
+    raw["audio-es"] = "2"
+    raw["spu-es"] = "5"
+    raw["subtitledelay"] = -0.15
+    raw["information"] = {
+        "category": {
+            "meta": {"title": "Example Film", "filename": "example-film.mkv"},
+            "Stream 2": {"Type": "Audio", "ID": "22", "Language": "Bulgarian"},
+            "Stream 5": {"Type": "Subtitle", "ID": "55", "Language": "English"},
+        }
+    }
+
+    status = parse_vlc_status(raw)
+
+    assert status.subtitle_delay_seconds == pytest.approx(-0.15)
+    assert status.capabilities.audio_track_selection is True
+    assert status.capabilities.subtitle_track_selection is True
+    assert status.tracks.audio[0].model_dump() == {
+        "id": "2",
+        "name": "Bulgarian",
+        "selected": True,
+    }
+    assert status.tracks.subtitles[0].model_dump() == {
+        "id": "5",
+        "name": "English",
+        "selected": True,
+    }
+
+
 def test_empty_payload_is_rejected() -> None:
     with pytest.raises(VlcCommandFailed):
         parse_vlc_status({})

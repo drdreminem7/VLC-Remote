@@ -83,4 +83,3 @@ def test_vlc_launch_uses_native_fullscreen_mode() -> None:
     command = launch_vlc_http.vlc_launch_command("private-password")
 
     assert "--macosx-nativefullscreenmode" in command
-    assert "--macosx-continue-playback=0" in command

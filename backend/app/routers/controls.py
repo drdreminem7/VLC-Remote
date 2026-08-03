@@ -17,6 +17,7 @@ from backend.app.models.commands import (
     RateRequest,
     RelativeSeekRequest,
     SeekRequest,
+    SubtitleDelayRequest,
     VolumeRequest,
 )
 from backend.app.models.playback import VlcStatus
@@ -102,6 +103,15 @@ async def set_rate(
     coordinator: Annotated[StatusCoordinator, Depends(get_status_coordinator)],
 ) -> VlcStatus:
     return remember(await vlc_client.set_rate(request.rate), coordinator)
+
+
+@router.post("/tracks/subtitle/delay", response_model=VlcStatus)
+async def set_subtitle_delay(
+    request: SubtitleDelayRequest,
+    vlc_client: Annotated[VlcClientProtocol, Depends(get_vlc_client)],
+    coordinator: Annotated[StatusCoordinator, Depends(get_status_coordinator)],
+) -> VlcStatus:
+    return remember(await vlc_client.set_subtitle_delay(request.seconds), coordinator)
 
 
 @router.post("/audio/volume", response_model=VlcStatus)

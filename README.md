@@ -12,9 +12,13 @@ scan one QR code, and control VLC from the same home network.
 - Pairs a phone to one Mac with a QR code.
 - Controls play/pause, ±10-second seek, timeline seek, volume (0–200), mute,
   and playback speed.
+- Selects embedded audio and subtitle tracks, and adjusts subtitle timing in
+  50 ms steps.
 - Shows a movie poster while media is playing, using TMDB when configured.
 - Lets a paired phone choose a movie from `Desktop/Movies`, loading local
-  sidecar subtitles and entering fullscreen.
+  sidecar subtitles, preserving playback position, and entering fullscreen.
+- Searches OpenSubtitles from the phone, prioritizing exact file and release
+  matches before downloading a subtitle beside the movie.
 - Runs as an installable phone web app and an optional Mac Dock app.
 - Keeps VLC's HTTP password on the Mac. The phone never receives it.
 
@@ -70,6 +74,15 @@ validates each selection inside `Desktop/Movies` before VLC is asked to open it.
 Compatible subtitle files directly beside the selected movie (`.srt`, `.ass`,
 `.vtt`, and similar formats) are added to VLC automatically.
 
+Open **Settings → Subtitles** to select embedded VLC tracks, load a sidecar
+file, or search OpenSubtitles and download a result beside the current movie.
+Online search requires the three `OPENSUBTITLES_…` values in `.env`; the
+account password, API key, and temporary login token stay on the Mac.
+
+Open **Settings → Audio track** to switch between the audio streams available
+inside the current movie. Hardware output—such as an HDMI TV—is selected by
+macOS, so leave VLC's audio device set to **Default**.
+
 ## Mac app
 
 Build, install, and open the Dock app:
@@ -97,17 +110,25 @@ password. Authorize that public key with a forced command to
 Shortcut limited to a trusted home network and do not configure router port
 forwarding for SSH.
 
+For the Shortcut's SSH **Host**, use the Mac's Bonjour name, for example
+`Harrys-MacBook-Pro.local`, rather than a fixed `192.168.x.x` address. The
+`.local` name works when the iPhone and Mac join another normal home Wi-Fi
+network together; a numeric address changes from network to network.
+
 ## Optional movie posters
 
 Create a local `.env` from `.env.example`, then add a TMDB API Read Access
-Token:
+Token and, optionally, your OpenSubtitles account and consumer API key:
 
 ```text
 TMDB_API_TOKEN=your_token_here
+OPENSUBTITLES_USERNAME=your_username
+OPENSUBTITLES_PASSWORD=your_password
+OPENSUBTITLES_API_KEY=your_consumer_api_key
 ```
 
-The token stays on the Mac. It is never sent to the phone and must never be
-committed.
+These values stay on the Mac. They are never sent to the phone and must never
+be committed.
 
 ## Development and checks
 

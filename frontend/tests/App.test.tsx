@@ -218,6 +218,37 @@ describe("mobile remote", () => {
     ]);
   });
 
+  it("shows VLC audio tracks in remote settings and selects one", async () => {
+    window.localStorage.setItem("mac-vlc-remote.access-token.v1", TOKEN);
+    const audioStatus = {
+      ...pausedStatus,
+      tracks: {
+        audio: [
+          { id: "2", name: "English", selected: true },
+          { id: "3", name: "Bulgarian", selected: false }
+        ],
+        subtitles: []
+      },
+      capabilities: {
+        ...pausedStatus.capabilities,
+        audioTrackSelection: true
+      }
+    };
+    const fetchMock = remoteFetch(response(audioStatus), response(audioStatus));
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<App />);
+    fireEvent.click(await screen.findByRole("button", { name: "Open remote settings" }));
+
+    const audioTrack = screen.getByLabelText("Audio track");
+    expect(audioTrack).toHaveValue("2");
+    fireEvent.change(audioTrack, { target: { value: "3" } });
+
+    await waitFor(() => {
+      expect(apiUrls(fetchMock)).toContain("/api/v1/tracks/audio");
+    });
+  });
+
   it("keeps controls active while a command is being confirmed", async () => {
     window.localStorage.setItem("mac-vlc-remote.access-token.v1", TOKEN);
     let resolveCommand: ((value: Response) => void) | undefined;
@@ -473,8 +504,7 @@ describe("mobile remote", () => {
     const libraryMovie = {
       id: "a".repeat(24),
       title: "The Quiet Film",
-      artworkQuery: "The.Quiet.Film.2024.1080p",
-      resumeSeconds: null
+      artworkQuery: "The.Quiet.Film.2024.1080p"
     };
     const playingStatus = {
       ...pausedStatus,
@@ -490,7 +520,7 @@ describe("mobile remote", () => {
         return Promise.resolve(response({ movies: [libraryMovie] }));
       }
       if (url === "/api/v1/library/play") {
-        expect(options?.body).toBe(`{"movieId":"${libraryMovie.id}","resume":false}`);
+        expect(options?.body).toBe(`{"movieId":"${libraryMovie.id}"}`);
         return Promise.resolve(response(playingStatus));
       }
       return Promise.resolve(response(pausedStatus));
@@ -510,47 +540,4 @@ describe("mobile remote", () => {
     expect(fetchMock.mock.calls.map(([url]) => requestUrl(url))).toContain("/api/v1/library/play");
   });
 
-  it("asks whether to resume a movie with saved progress", async () => {
-    window.localStorage.setItem("mac-vlc-remote.access-token.v1", TOKEN);
-    const libraryMovie = {
-      id: "b".repeat(24),
-      title: "The Quiet Film",
-      artworkQuery: "The.Quiet.Film.2024.1080p",
-      resumeSeconds: 900
-    };
-    const fetchMock = vi.fn<typeof fetch>().mockImplementation((input, options) => {
-      const url = requestUrl(input);
-      if (url.startsWith("/api/v1/artwork")) {
-        return Promise.resolve(response({ imageData: null }));
-      }
-      if (url === "/api/v1/library") {
-        return Promise.resolve(response({ movies: [libraryMovie] }));
-      }
-      if (url === "/api/v1/library/play") {
-        expect(options?.body).toBe(`{"movieId":"${libraryMovie.id}","resume":true}`);
-        return Promise.resolve(response(pausedStatus));
-      }
-      return Promise.resolve(response(pausedStatus));
-    });
-    vi.stubGlobal("fetch", fetchMock);
-
-    render(<App />);
-    fireEvent.click(await screen.findByRole("button", { name: "Open remote settings" }));
-    fireEvent.click(await screen.findByRole("button", { name: "Open movie library" }));
-    fireEvent.click(await screen.findByRole("button", { name: "Play The Quiet Film" }));
-
-    expect(await screen.findByRole("dialog", { name: "Resume movie" })).toHaveTextContent(
-      "Resume from 15:00?"
-    );
-    expect(fetchMock.mock.calls.map(([url]) => requestUrl(url))).toContain("/api/v1/library/play");
-    fireEvent.click(screen.getByRole("button", { name: "Resume" }));
-    await waitFor(() => {
-      expect(screen.queryByRole("dialog", { name: "Resume movie" })).not.toBeInTheDocument();
-    });
-    await waitFor(() => {
-      expect(fetchMock.mock.calls.map(([url]) => requestUrl(url))).toContain(
-        "/api/v1/playback/play"
-      );
-    });
-  });
 });

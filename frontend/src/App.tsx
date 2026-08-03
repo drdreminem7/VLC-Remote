@@ -9,7 +9,13 @@ import {
 
 import { useRemote } from "./hooks/useRemote";
 import { lookupMoviePoster } from "./api/poster";
-import type { ConnectionState, LibraryMovie, VlcStatus } from "./types";
+import type {
+  ConnectionState,
+  FolderSubtitle,
+  LibraryMovie,
+  OnlineSubtitle,
+  VlcStatus
+} from "./types";
 import { clamp, formatDuration } from "./utils/time";
 
 const DEFAULT_RATES = [0.5, 0.75, 1, 1.25, 1.5, 2];
@@ -20,6 +26,14 @@ const INITIAL_LIBRARY_MOVIES = 18;
 
 function normalizePlaybackRate(rate: number): number {
   return Math.round(rate * 100) / 100;
+}
+
+function formatSubtitleDelay(seconds: number): string {
+  const milliseconds = Math.round(seconds * 1000);
+  if (milliseconds === 0) {
+    return "0 ms";
+  }
+  return `${milliseconds > 0 ? "+" : ""}${milliseconds} ms`;
 }
 
 function StatusDot() {
@@ -49,6 +63,15 @@ function LibraryIcon() {
       <rect height="13" rx="1.75" width="17" x="3.5" y="6.5" />
       <path d="M8 4.5h8M8 10.25h.01M12 10.25h.01M16 10.25h.01" />
       <path d="m10.25 14 4.5 2.5-4.5 2.5v-5Z" />
+    </svg>
+  );
+}
+
+function SubtitleIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <rect height="12" rx="1.75" width="18" x="3" y="6" />
+      <path d="M7.5 10.25h.01M11 10.25h5.5M7.5 14h.01M11 14h3.5" />
     </svg>
   );
 }
@@ -242,10 +265,21 @@ export default function App() {
   const [libraryError, setLibraryError] = useState<string | null>(null);
   const [libraryVisibleCount, setLibraryVisibleCount] = useState(INITIAL_LIBRARY_MOVIES);
   const [libraryPlayingId, setLibraryPlayingId] = useState<string | null>(null);
-  const [resumeMovie, setResumeMovie] = useState<LibraryMovie | null>(null);
+  const [activeLibraryMovieId, setActiveLibraryMovieId] = useState<string | null>(null);
+  const [subtitlesOpen, setSubtitlesOpen] = useState(false);
+  const [subtitleTimingOpen, setSubtitleTimingOpen] = useState(false);
+  const [folderSubtitles, setFolderSubtitles] = useState<readonly FolderSubtitle[] | null>(null);
+  const [subtitlesLoading, setSubtitlesLoading] = useState(false);
+  const [subtitleError, setSubtitleError] = useState<string | null>(null);
+  const [onlineLanguage, setOnlineLanguage] = useState("en");
+  const [onlineSubtitles, setOnlineSubtitles] = useState<readonly OnlineSubtitle[] | null>(null);
+  const [onlineLoading, setOnlineLoading] = useState(false);
+  const [onlineError, setOnlineError] = useState<string | null>(null);
   const [endSessionPromptOpen, setEndSessionPromptOpen] = useState(false);
   const seekingRef = useRef(false);
   const seekPreviewRef = useRef<number | null>(null);
+  const getFolderSubtitles = remote.getFolderSubtitles;
+  const searchOnlineSubtitles = remote.searchOnlineSubtitles;
 
   const status = remote.status;
   const mediaSource = status?.media.title || status?.media.filename || "";
@@ -302,6 +336,8 @@ export default function App() {
 
   const openLibrary = useCallback(() => {
     setSettingsOpen(false);
+    setSubtitleTimingOpen(false);
+    setSubtitlesOpen(false);
     setLibraryMovies(null);
     setLibraryLoading(true);
     setLibraryError(null);
@@ -336,32 +372,76 @@ export default function App() {
     return () => controller.abort();
   }, [libraryOpen, remote.getLibrary]);
 
-  const playLibraryMovie = async (movieId: string, resume = false) => {
+  const playLibraryMovie = async (movieId: string) => {
     setLibraryPlayingId(movieId);
-    const nextStatus = await remote.playLibraryMovie(movieId, resume);
+    const nextStatus = await remote.playLibraryMovie(movieId);
     setLibraryPlayingId(null);
     if (nextStatus !== null) {
+      setActiveLibraryMovieId(movieId);
       setLibraryOpen(false);
     }
   };
 
-  const selectLibraryMovie = (movie: LibraryMovie) => {
-    if (typeof movie.resumeSeconds === "number") {
-      setLibraryOpen(false);
-      setLibraryPlayingId(movie.id);
-      void remote.playLibraryMovie(movie.id, true).then((nextStatus) => {
-        setLibraryPlayingId(null);
-        if (nextStatus !== null) {
-          setResumeMovie(movie);
-        }
-      });
+  const loadFolderSubtitles = useCallback(() => {
+    if (activeLibraryMovieId === null) {
       return;
     }
+    setSubtitlesLoading(true);
+    void getFolderSubtitles(activeLibraryMovieId).then((result) => {
+      if (result === null) {
+        setSubtitleError("Could not load subtitle files from the movie folder.");
+      } else {
+        setFolderSubtitles(result.subtitles);
+      }
+      setSubtitlesLoading(false);
+    });
+  }, [activeLibraryMovieId, getFolderSubtitles]);
+
+  const openSubtitles = useCallback(() => {
+    setSettingsOpen(false);
+    setSubtitleTimingOpen(false);
+    setSubtitlesOpen(true);
+    setSubtitleError(null);
+    setFolderSubtitles(null);
+    setOnlineError(null);
+    setOnlineSubtitles(null);
+    loadFolderSubtitles();
+  }, [loadFolderSubtitles]);
+
+  const searchOnline = () => {
+    if (activeLibraryMovieId === null) {
+      return;
+    }
+    setOnlineLoading(true);
+    setOnlineError(null);
+    setOnlineSubtitles(null);
+    void searchOnlineSubtitles(activeLibraryMovieId, onlineLanguage).then((result) => {
+      if (result === null) {
+        setOnlineError("Could not search OpenSubtitles. Check its Mac configuration.");
+      } else {
+        setOnlineSubtitles(result.subtitles);
+      }
+      setOnlineLoading(false);
+    });
+  };
+
+  const downloadOnline = (subtitleId: string) => {
+    if (activeLibraryMovieId === null) {
+      return;
+    }
+    void remote.downloadOnlineSubtitle(activeLibraryMovieId, subtitleId).then((result) => {
+      if (result !== null) {
+        loadFolderSubtitles();
+      }
+    });
+  };
+
+  const selectLibraryMovie = (movie: LibraryMovie) => {
     void playLibraryMovie(movie.id);
   };
 
   useEffect(() => {
-    if (!settingsOpen && !libraryOpen) {
+    if (!settingsOpen && !libraryOpen && !subtitlesOpen && !subtitleTimingOpen) {
       return undefined;
     }
 
@@ -369,13 +449,14 @@ export default function App() {
       if (event.key === "Escape") {
         setSettingsOpen(false);
         setLibraryOpen(false);
-        setResumeMovie(null);
+        setSubtitlesOpen(false);
+        setSubtitleTimingOpen(false);
       }
     };
 
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
-  }, [libraryOpen, settingsOpen, resumeMovie]);
+  }, [libraryOpen, settingsOpen, subtitleTimingOpen, subtitlesOpen]);
 
   const beginSeeking = () => {
     if (!canSeek) {
@@ -411,6 +492,14 @@ export default function App() {
     }
   };
 
+  const adjustSubtitleDelay = (change: -0.05 | 0.05) => {
+    if (!controlsEnabled) {
+      return;
+    }
+    const currentDelay = status?.subtitleDelaySeconds ?? 0;
+    void remote.setSubtitleDelay(Math.round(clamp(currentDelay + change, -10, 10) * 100) / 100);
+  };
+
   const isPlaying = status?.state === "playing";
   const primaryLabel = isPlaying ? "Pause playback" : "Play playback";
   const description = mediaDescription(status, remote.connection);
@@ -420,7 +509,6 @@ export default function App() {
     if (ended) {
       setSettingsOpen(false);
       setLibraryOpen(false);
-      setResumeMovie(null);
       setEndSessionPromptOpen(false);
       window.close();
     }
@@ -577,6 +665,7 @@ export default function App() {
             >
               <MinusIcon />
             </button>
+
             <div aria-live="polite" className="volume-readout">
               <VolumeIcon />
               <strong>{displayedVolume}</strong>
@@ -650,6 +739,20 @@ export default function App() {
               <span>
                 <strong>Movie library</strong>
                 <small>Desktop Movies</small>
+              </span>
+            </button>
+
+            <button
+              aria-label="Open subtitles"
+              className="library-launch-button"
+              disabled={!hasMedia}
+              onClick={openSubtitles}
+              type="button"
+            >
+              <SubtitleIcon />
+              <span>
+                <strong>Subtitles</strong>
+                <small>Tracks, files & search</small>
               </span>
             </button>
 
@@ -802,19 +905,228 @@ export default function App() {
         </div>
       ) : null}
 
+      {subtitlesOpen ? (
+        <div className="subtitle-dialog" onMouseDown={() => setSubtitlesOpen(false)}>
+          <section
+            aria-label="Subtitles"
+            aria-modal="true"
+            className="subtitle-dialog__sheet"
+            onMouseDown={(event) => event.stopPropagation()}
+            role="dialog"
+          >
+            <header className="subtitle-dialog__header">
+              <div>
+                <p className="eyebrow">Subtitles</p>
+                <h2>{posterTitle ?? "Current movie"}</h2>
+              </div>
+              <button
+                aria-label="Close subtitles"
+                className="icon-button"
+                onClick={() => setSubtitlesOpen(false)}
+                type="button"
+              >
+                <CloseIcon />
+              </button>
+            </header>
+
+            <button
+              className="subtitle-timing-button"
+              disabled={!controlsEnabled}
+              onClick={() => setSubtitleTimingOpen(true)}
+              type="button"
+            >
+              Subtitle timing
+              <span>{formatSubtitleDelay(status?.subtitleDelaySeconds ?? 0)}</span>
+            </button>
+
+            <section className="subtitle-section" aria-label="Subtitle tracks in VLC">
+              <p className="eyebrow">In VLC</p>
+              {status?.tracks.subtitles.length ? (
+                <div className="subtitle-list">
+                  {status.tracks.subtitles.map((track) => (
+                    <button
+                      aria-pressed={track.selected}
+                      className="subtitle-option"
+                      disabled={!controlsEnabled}
+                      key={track.id}
+                      onClick={() => void remote.selectSubtitleTrack(track.id)}
+                      type="button"
+                    >
+                      <span>{track.name}</span>
+                      {track.selected ? <strong>On</strong> : null}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className="subtitle-empty">No embedded or active subtitle tracks.</p>
+              )}
+            </section>
+
+            <section className="subtitle-section" aria-label="Subtitle files in movie folder">
+              <p className="eyebrow">Movie folder</p>
+              {activeLibraryMovieId === null ? (
+                <p className="subtitle-empty">Choose this movie from the library to access files beside it.</p>
+              ) : null}
+              {subtitlesLoading ? <p className="subtitle-empty">Checking local files…</p> : null}
+              {subtitleError ? <p className="subtitle-empty" role="alert">{subtitleError}</p> : null}
+              {folderSubtitles !== null && folderSubtitles.length === 0 ? (
+                <p className="subtitle-empty">No subtitle files found beside this movie.</p>
+              ) : null}
+              {folderSubtitles !== null && folderSubtitles.length > 0 ? (
+                <div className="subtitle-list">
+                  {folderSubtitles.map((subtitle) => (
+                    <button
+                      className="subtitle-option"
+                      disabled={remote.pendingAction !== null}
+                      key={subtitle.id}
+                      onClick={() =>
+                        activeLibraryMovieId !== null &&
+                        void remote.activateFolderSubtitle(activeLibraryMovieId, subtitle.id)
+                      }
+                      type="button"
+                    >
+                      <span>{subtitle.name}</span>
+                      <strong>Load</strong>
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </section>
+
+            <section className="subtitle-search" aria-label="Find subtitles online">
+              <div>
+                <p className="eyebrow">Find online</p>
+                <h3>OpenSubtitles</h3>
+              </div>
+              <div className="subtitle-search__controls">
+                <label>
+                  Language
+                  <select
+                    aria-label="Subtitle language"
+                    onChange={(event) => setOnlineLanguage(event.currentTarget.value)}
+                    value={onlineLanguage}
+                  >
+                    <option value="en">English</option>
+                    <option value="bg">Bulgarian</option>
+                    <option value="es">Spanish</option>
+                    <option value="fr">French</option>
+                    <option value="de">German</option>
+                    <option value="it">Italian</option>
+                    <option value="pt-br">Portuguese (Brazil)</option>
+                    <option value="ru">Russian</option>
+                  </select>
+                </label>
+                <button
+                  disabled={activeLibraryMovieId === null || onlineLoading}
+                  onClick={searchOnline}
+                  type="button"
+                >
+                  {onlineLoading ? "Searching…" : "Search"}
+                </button>
+              </div>
+              {activeLibraryMovieId === null ? (
+                <p>Choose this movie from the library before searching.</p>
+              ) : null}
+              {onlineError ? <p role="alert">{onlineError}</p> : null}
+              {onlineSubtitles !== null && onlineSubtitles.length === 0 ? (
+                <p>No matching {onlineLanguage} subtitles found.</p>
+              ) : null}
+              {onlineSubtitles !== null && onlineSubtitles.length > 0 ? (
+                <div className="subtitle-list">
+                  {onlineSubtitles.map((subtitle) => (
+                    <article className="online-subtitle" key={subtitle.id}>
+                      <div>
+                        <strong>{subtitle.filename}</strong>
+                        <p>
+                          {subtitle.language.toUpperCase()} · {subtitle.downloads.toLocaleString()} downloads
+                          {subtitle.trusted ? " · Trusted" : ""}
+                          {subtitle.moviehashMatch ? " · Exact match" : ""}
+                          {!subtitle.moviehashMatch && subtitle.releaseMatch ? " · Release match" : ""}
+                        </p>
+                      </div>
+                      <button
+                        disabled={remote.pendingAction !== null}
+                        onClick={() => downloadOnline(subtitle.id)}
+                        type="button"
+                      >
+                        Download
+                      </button>
+                    </article>
+                  ))}
+                </div>
+              ) : null}
+            </section>
+          </section>
+        </div>
+      ) : null}
+
+      {subtitleTimingOpen ? (
+        <div className="subtitle-dialog subtitle-timing-dialog" onMouseDown={() => setSubtitleTimingOpen(false)}>
+          <section
+            aria-label="Subtitle timing"
+            aria-modal="true"
+            className="subtitle-dialog__sheet subtitle-timing-dialog__sheet"
+            onMouseDown={(event) => event.stopPropagation()}
+            role="dialog"
+          >
+            <header className="subtitle-dialog__header">
+              <div>
+                <p className="eyebrow">Subtitle settings</p>
+                <h2>Subtitle timing</h2>
+              </div>
+              <button
+                aria-label="Close subtitle timing"
+                className="icon-button"
+                onClick={() => setSubtitleTimingOpen(false)}
+                type="button"
+              >
+                <CloseIcon />
+              </button>
+            </header>
+            <p className="subtitle-timing-dialog__value" aria-live="polite">
+              {formatSubtitleDelay(status?.subtitleDelaySeconds ?? 0)}
+            </p>
+            <p className="subtitle-empty">Move the captions in small 50 ms steps to match the dialogue.</p>
+            <div className="subtitle-timing-dialog__actions">
+              <button
+                disabled={!controlsEnabled}
+                onClick={() => adjustSubtitleDelay(-0.05)}
+                type="button"
+              >
+                Earlier
+              </button>
+              <button
+                disabled={!controlsEnabled}
+                onClick={() => void remote.setSubtitleDelay(0)}
+                type="button"
+              >
+                Reset
+              </button>
+              <button
+                disabled={!controlsEnabled}
+                onClick={() => adjustSubtitleDelay(0.05)}
+                type="button"
+              >
+                Later
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
+
       {endSessionPromptOpen ? (
-        <div className="resume-dialog" onMouseDown={() => setEndSessionPromptOpen(false)}>
+        <div className="confirm-dialog" onMouseDown={() => setEndSessionPromptOpen(false)}>
           <section
             aria-label="End VLC Remote"
             aria-modal="true"
-            className="resume-dialog__sheet"
+            className="confirm-dialog__sheet"
             onMouseDown={(event) => event.stopPropagation()}
             role="dialog"
           >
             <p className="eyebrow">End session</p>
             <h2>Close everything?</h2>
             <p>VLC, the phone remote, and VLC Remote on your Mac will close.</p>
-            <div className="resume-dialog__actions">
+            <div className="confirm-dialog__actions">
               <button onClick={() => setEndSessionPromptOpen(false)} type="button">Cancel</button>
               <button
                 aria-busy={remote.pendingAction === "end-session"}
@@ -824,49 +1136,6 @@ export default function App() {
                 type="button"
               >
                 End everything
-              </button>
-            </div>
-          </section>
-        </div>
-      ) : null}
-
-      {resumeMovie !== null ? (
-        <div className="resume-dialog" onMouseDown={() => setResumeMovie(null)}>
-          <section
-            aria-label="Resume movie"
-            aria-modal="true"
-            className="resume-dialog__sheet"
-            onMouseDown={(event) => event.stopPropagation()}
-            role="dialog"
-          >
-            <p className="eyebrow">Continue watching</p>
-            <h2>{resumeMovie.title}</h2>
-            <p>
-              Resume from <strong>{formatDuration(resumeMovie.resumeSeconds ?? 0)}</strong>?
-            </p>
-            <div className="resume-dialog__actions">
-              <button
-                className="text-button"
-                disabled={libraryPlayingId === resumeMovie.id}
-                onClick={() => {
-                  const movie = resumeMovie;
-                  setResumeMovie(null);
-                  void playLibraryMovie(movie.id);
-                }}
-                type="button"
-              >
-                Start over
-              </button>
-              <button
-                className="resume-dialog__resume"
-                disabled={libraryPlayingId === resumeMovie.id}
-                onClick={() => {
-                  setResumeMovie(null);
-                  void remote.play();
-                }}
-                type="button"
-              >
-                Resume
               </button>
             </div>
           </section>

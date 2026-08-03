@@ -14,8 +14,10 @@ from backend.app import __version__
 from backend.app.config import Settings, get_settings
 from backend.app.errors import (
     ApiException,
+    OpenSubtitlesError,
     VlcError,
     api_exception_handler,
+    opensubtitles_exception_handler,
     validation_exception_handler,
     vlc_exception_handler,
 )
@@ -29,9 +31,10 @@ from backend.app.services.movie_artwork import (
     MovieArtworkLookupProtocol,
 )
 from backend.app.services.movie_library import MovieLibrary, MovieLibraryProtocol
-from backend.app.services.playback_resume import (
-    PlaybackResumeStore,
-    PlaybackResumeTracker,
+from backend.app.services.opensubtitles import (
+    OpenSubtitlesClient,
+    OpenSubtitlesClientProtocol,
+    UnconfiguredOpenSubtitlesClient,
 )
 from backend.app.services.remote_shutdown import (
     ProcessRemoteShutdown,
@@ -57,7 +60,7 @@ def create_app(
     vlc_client: VlcClientProtocol | None = None,
     artwork_lookup: MovieArtworkLookupProtocol | None = None,
     movie_library: MovieLibraryProtocol | None = None,
-    playback_resume_tracker: PlaybackResumeTracker | None = None,
+    opensubtitles_client: OpenSubtitlesClientProtocol | None = None,
     remote_shutdown: RemoteShutdownProtocol | None = None,
 ) -> FastAPI:
     """Build an application instance suitable for production and tests."""
@@ -76,15 +79,15 @@ def create_app(
             else None
         )
     )
-    active_resume_store = PlaybackResumeStore(
-        active_settings.vlc_remote_state_directory
-    )
-    active_resume_tracker = playback_resume_tracker or PlaybackResumeTracker(
-        active_resume_store
-    )
     active_movie_library = movie_library or MovieLibrary(
-        active_settings.movie_library_directory, active_resume_store
+        active_settings.movie_library_directory
     )
+    if opensubtitles_client is not None:
+        active_opensubtitles_client = opensubtitles_client
+    elif active_settings.opensubtitles_is_configured:
+        active_opensubtitles_client = OpenSubtitlesClient.from_settings(active_settings)
+    else:
+        active_opensubtitles_client = UnconfiguredOpenSubtitlesClient()
     active_remote_shutdown = remote_shutdown or ProcessRemoteShutdown()
 
     @asynccontextmanager
@@ -93,6 +96,7 @@ def create_app(
         if isinstance(active_vlc_client, HttpxVlcClient):
             await active_vlc_client.aclose()
         await active_artwork_lookup.aclose()
+        await active_opensubtitles_client.aclose()
 
     application = FastAPI(
         title="Mac VLC Remote",
@@ -108,7 +112,7 @@ def create_app(
     application.state.status_coordinator = StatusCoordinator()
     application.state.artwork_lookup = active_artwork_lookup
     application.state.movie_library = active_movie_library
-    application.state.playback_resume_tracker = active_resume_tracker
+    application.state.opensubtitles_client = active_opensubtitles_client
     application.state.remote_shutdown = active_remote_shutdown
 
     application.add_middleware(
@@ -121,6 +125,9 @@ def create_app(
         validation_exception_handler,
     )
     application.add_exception_handler(VlcError, vlc_exception_handler)
+    application.add_exception_handler(
+        OpenSubtitlesError, opensubtitles_exception_handler
+    )
 
     application.include_router(health_router, prefix="/api/v1")
     application.include_router(status_router, prefix="/api/v1")

@@ -1,4 +1,9 @@
-import type { MovieLibraryResponse, VlcStatus } from "../types";
+import type {
+  MovieLibraryResponse,
+  MovieSubtitlesResponse,
+  OnlineSubtitlesResponse,
+  VlcStatus
+} from "../types";
 
 interface ErrorPayload {
   error?: {
@@ -28,7 +33,23 @@ export class RemoteApiError extends Error {
 export interface RemoteApi {
   getStatus(signal?: AbortSignal): Promise<VlcStatus>;
   getLibrary(signal?: AbortSignal): Promise<MovieLibraryResponse>;
-  playLibraryMovie(movieId: string, resume: boolean, signal?: AbortSignal): Promise<VlcStatus>;
+  getFolderSubtitles(movieId: string, signal?: AbortSignal): Promise<MovieSubtitlesResponse>;
+  searchOnlineSubtitles(
+    movieId: string,
+    language: string,
+    signal?: AbortSignal
+  ): Promise<OnlineSubtitlesResponse>;
+  playLibraryMovie(movieId: string, signal?: AbortSignal): Promise<VlcStatus>;
+  activateFolderSubtitle(
+    movieId: string,
+    subtitleId: string,
+    signal?: AbortSignal
+  ): Promise<VlcStatus>;
+  downloadOnlineSubtitle(
+    movieId: string,
+    subtitleId: string,
+    signal?: AbortSignal
+  ): Promise<VlcStatus>;
   togglePlayback(signal?: AbortSignal): Promise<VlcStatus>;
   play(signal?: AbortSignal): Promise<VlcStatus>;
   pause(signal?: AbortSignal): Promise<VlcStatus>;
@@ -38,6 +59,7 @@ export interface RemoteApi {
   setVolume(percent: number, signal?: AbortSignal): Promise<VlcStatus>;
   setMuted(muted: boolean, signal?: AbortSignal): Promise<VlcStatus>;
   setRate(rate: number, signal?: AbortSignal): Promise<VlcStatus>;
+  setSubtitleDelay(seconds: number, signal?: AbortSignal): Promise<VlcStatus>;
   selectAudioTrack(trackId: string, signal?: AbortSignal): Promise<VlcStatus>;
   selectSubtitleTrack(trackId: string, signal?: AbortSignal): Promise<VlcStatus>;
   nextItem(signal?: AbortSignal): Promise<VlcStatus>;
@@ -100,8 +122,25 @@ export function createRemoteApi(
     getStatus: (signal) => request<VlcStatus>("/status", signal === undefined ? {} : { signal }),
     getLibrary: (signal) =>
       request<MovieLibraryResponse>("/library", signal === undefined ? {} : { signal }),
-    playLibraryMovie: (movieId, resume, signal) =>
-      post("/library/play", { movieId, resume }, signal),
+    getFolderSubtitles: (movieId, signal) =>
+      request<MovieSubtitlesResponse>(
+        `/library/${encodeURIComponent(movieId)}/subtitles`,
+        signal === undefined ? {} : { signal }
+      ),
+    searchOnlineSubtitles: (movieId, language, signal) =>
+      request<OnlineSubtitlesResponse>(
+        `/library/${encodeURIComponent(movieId)}/subtitles/online?language=${encodeURIComponent(language)}`,
+        signal === undefined ? {} : { signal }
+      ),
+    playLibraryMovie: (movieId, signal) => post("/library/play", { movieId }, signal),
+    activateFolderSubtitle: (movieId, subtitleId, signal) =>
+      post(`/library/${encodeURIComponent(movieId)}/subtitles/activate`, { subtitleId }, signal),
+    downloadOnlineSubtitle: (movieId, subtitleId, signal) =>
+      post(
+        `/library/${encodeURIComponent(movieId)}/subtitles/online/${encodeURIComponent(subtitleId)}/download`,
+        undefined,
+        signal
+      ),
     togglePlayback: (signal) => post("/playback/toggle", undefined, signal),
     play: (signal) => post("/playback/play", undefined, signal),
     pause: (signal) => post("/playback/pause", undefined, signal),
@@ -113,6 +152,8 @@ export function createRemoteApi(
     setVolume: (percent, signal) => post("/audio/volume", { percent }, signal),
     setMuted: (muted, signal) => post("/audio/mute", { muted }, signal),
     setRate: (rate, signal) => post("/playback/rate", { rate }, signal),
+    setSubtitleDelay: (seconds, signal) =>
+      post("/tracks/subtitle/delay", { seconds }, signal),
     selectAudioTrack: (trackId, signal) =>
       post("/tracks/audio", { trackId }, signal),
     selectSubtitleTrack: (trackId, signal) =>
